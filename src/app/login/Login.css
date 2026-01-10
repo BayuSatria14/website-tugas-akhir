@@ -1,0 +1,302 @@
+/* ===========================
+   GLOBAL CONTAINER
+   =========================== */
+.login-container {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    overflow: hidden;
+}
+
+/* ===========================
+   BAGIAN KIRI — SLIDESHOW
+   =========================== */
+.left-section {
+    width: 50%;
+    background: linear-gradient(to left, #d67a2a, #b75a14);
+    position: relative;
+    overflow: hidden;
+}
+
+.slideshow-img {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    object-fit: cover;
+    opacity: 0;
+    z-index: 1;
+    transition: opacity 1.5s ease-in-out;
+}
+
+.slideshow-img.active {
+    opacity: 1;
+    z-index: 2;
+}
+
+/* ===========================
+   BAGIAN KANAN — FORM & CONTENT
+   =========================== */
+.right-section {
+    width: 50%;
+    background: linear-gradient(to right, #ffa53d, #b75a14);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
+    padding-top: 120px;
+    overflow-y: auto;
+}
+
+.right-section h2 {
+    font-size: 32px;
+    color: #D9C3A1;
+    margin-bottom: 25px;
+    font-weight: bold;
+}
+
+/* --- Form Group --- */
+.form-group {
+    width: 70%;
+    max-width: 450px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.form-group input {
+    padding: 15px;
+    border-radius: 8px;
+    border: none;
+    font-size: 15px;
+    background: white;
+    color: #333;
+}
+
+.form-group input::placeholder {
+    color: #999;
+}
+
+.form-group input:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(217, 195, 161, 0.5);
+}
+
+.login-btn {
+    margin-top: 10px;
+    padding: 14px;
+    background: #D9C3A1;
+    color: #ffffff;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 15px;
+    transition: all 0.3s;
+    margin-bottom: 0px;
+}
+
+.login-btn:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+.login-btn:active {
+    transform: translateY(0);
+}
+
+/* --- Register Text --- */
+.register-text {
+    margin-top: 15px;
+    color: #D9C3A1;
+    font-size: 14px;
+    text-align: center;
+}
+
+.register-text span {
+    color: #D9C3A1;
+    cursor: pointer;
+    font-weight: bold;
+    text-decoration: underline;
+}
+
+.register-text span:hover {
+    color: #ffffff;
+}
+
+.welcome-box {
+    margin-top: 40px;
+    margin-bottom: 40px;
+    text-align: center;
+}
+
+.welcome {
+    font-size: 20px;
+    color: #F5EEDC;
+    margin-bottom: 5px;
+}
+
+.app-title {
+    font-size: 20px;
+    font-weight: bold;
+    color: #F5EEDC;
+}
+
+/* ===========================
+   PASSWORD EYE ICON
+   =========================== */
+.password-wrapper {
+    position: relative;
+    width: 100%;
+    display: flex;
+}
+
+.password-wrapper input {
+    width: 100%;
+    padding: 15px;
+    padding-right: 45px;
+    border-radius: 8px;
+    border: none;
+    font-size: 15px;
+    box-sizing: border-box;
+    color: #333;
+}
+
+.eye-icon {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: #555;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.3s;
+}
+
+.eye-icon:hover {
+    color: #000;
+}
+
+/* ===========================
+   SOCIAL LOGIN SECTION
+   =========================== */
+.social-login {
+    width: 70%;
+    max-width: 450px;
+    margin-top: 20px;
+}
+
+.divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    margin: 20px 0;
+}
+
+.divider::before,
+.divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid #D9C3A1;
+    opacity: 0.5;
+}
+
+.divider span {
+    padding: 0 15px;
+    font-size: 14px;
+    color: #D9C3A1;
+}
+
+.social-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+.social-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 12px 20px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.google-btn {
+    background: white;
+    color: #333;
+}
+
+.facebook-btn {
+    background: #ffffff;
+    color: black;
+}
+
+.social-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.social-btn:active {
+    transform: translateY(0);
+}
+
+/* ===========================
+   RESPONSIVE
+   =========================== */
+@media (max-width: 1024px) {
+    .login-container {
+        flex-direction: column;
+    }
+
+    .left-section {
+        width: 100%;
+        height: 30vh;
+    }
+
+    .right-section {
+        width: 100%;
+        height: 70vh;
+        padding-top: 40px;
+    }
+}
+
+@media (max-width: 768px) {
+    .left-section {
+        display: none;
+    }
+
+    .right-section {
+        width: 100%;
+        height: 100vh;
+        padding: 30px 20px;
+    }
+
+    .form-group {
+        width: 90%;
+    }
+
+    .social-login {
+        width: 90%;
+    }
+
+    .social-buttons {
+        flex-direction: column;
+    }
+
+    .social-btn {
+        width: 100%;
+    }
+}
