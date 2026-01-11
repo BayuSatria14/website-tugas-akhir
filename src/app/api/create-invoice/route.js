@@ -53,22 +53,22 @@ export async function POST(request) {
         }
 
         const authHeader = Buffer.from(`${XENDIT_API_KEY}:`).toString('base64');
-        const response = await fetch('https://api.xendit.co/v2/invoices', {
+        const response = await fetch(XENDIT_URL, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Basic ${authHeader}` },
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Basic ${authHeader}`
+            },
             body: JSON.stringify({
-                external_id: externalId,
-                amount: amount,
-                payer_email: payerEmail,
+                external_id: body.externalId,
+                amount: body.amount,
+                payer_email: body.payerEmail,
                 description: body.description,
                 success_redirect_url: body.successRedirectUrl,
                 failure_redirect_url: body.failureRedirectUrl,
                 currency: 'IDR',
-                should_send_email: true,
-                invoice_duration: durationSeconds || 30,
-                payment_methods: body.paymentMethod === 'BANK_TRANSFER' ? ['VIRTUAL_ACCOUNT'] :
-                    body.paymentMethod === 'CREDIT_CARD' ? ['CREDIT_CARD'] :
-                        body.paymentMethod === 'QRIS' ? ['QRIS'] : undefined
+                // DURASI UNTUK TESTING
+                invoice_duration: 60
             })
         });
 

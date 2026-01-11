@@ -1,9 +1,28 @@
 'use client';
 
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation"; // Next.js navigation
+import { useRouter, useParams, useSearchParams } from "next/navigation"; // Next.js navigation
 import { Calendar, Users, Info, Plus, ChevronDown, Loader2 } from "lucide-react";
 import "./BookingPage.css";
+
+// Data Package (Disamakan dengan HomePage / PackageDetail)
+const packagesData = [
+    {
+        id: 1,
+        title: "Weekend Yoga Retreat",
+        duration: "3 Days 2 Night",
+    },
+    {
+        id: 2,
+        title: "Ultimate Wellness Package",
+        duration: "5 Days 4 Nights",
+    },
+    {
+        id: 3,
+        title: "Day Pass Experience",
+        duration: "2 Day 1 Nights",
+    }
+];
 
 // Data Kamar (Simulasi Database)
 const roomData = [
@@ -33,6 +52,9 @@ const roomData = [
 
 export default function BookingPage() {
     const router = useRouter(); // Next.js router
+    const params = useParams();
+    const searchParamsHooks = useSearchParams(); // Rename to avoid conflict with state
+    const id = params?.id;
 
     // State untuk Search Bar & Kalender
     const [searchParams, setSearchParams] = useState({
@@ -42,6 +64,55 @@ export default function BookingPage() {
         adult: 2,
         child: 0
     });
+
+    // Effect untuk membaca Query Params dari URL (jika ada)
+    useEffect(() => {
+        const qCheckIn = searchParamsHooks.get('checkIn');
+        const qCheckOut = searchParamsHooks.get('checkOut');
+        const qGuests = searchParamsHooks.get('guests');
+
+        if (qCheckIn && qCheckOut) {
+            const start = new Date(qCheckIn);
+            const end = new Date(qCheckOut);
+            const nights = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+
+            if (nights > 0) {
+                setSearchParams(prev => ({
+                    ...prev,
+                    checkIn: qCheckIn,
+                    checkOut: qCheckOut,
+                    nights: nights,
+                    adult: qGuests ? parseInt(qGuests) : prev.adult
+                }));
+            }
+        }
+    }, [searchParamsHooks]);
+
+    // Effect untuk update duration berdasarkan paket yang dipilih (Prioritas ke-2 jika by Package)
+    useEffect(() => {
+        if (id && id !== 'custom') {
+            const pkg = packagesData.find(p => p.id === parseInt(id));
+            if (pkg) {
+                // Parse "3 Days 2 Night" -> ambil angka sebelum "Night"
+                const match = pkg.duration.match(/(\d+)\s*Night/i);
+                if (match) {
+                    const nights = parseInt(match[1]);
+
+                    // Hitung CheckOut baru berdasarkan CheckIn saat ini + nights
+                    const startDate = new Date(searchParams.checkIn);
+                    const endDate = new Date(startDate);
+                    endDate.setDate(endDate.getDate() + nights);
+                    const newCheckOut = endDate.toISOString().split('T')[0];
+
+                    setSearchParams(prev => ({
+                        ...prev,
+                        nights: nights,
+                        checkOut: newCheckOut
+                    }));
+                }
+            }
+        }
+    }, [id]); // Jalankan perubahan ini hanya saat ID berubah (awal load)
 
     const [showRooms, setShowRooms] = useState(false);
     const [activeQtySelector, setActiveQtySelector] = useState(null);

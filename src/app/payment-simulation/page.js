@@ -57,15 +57,52 @@ export default function PaymentSimulationPage() {
         return true;
     };
 
+    const [timeLeft, setTimeLeft] = useState(60);
+    const [isExpired, setIsExpired] = useState(false);
+
+    useEffect(() => {
+        if (!bookingId) return;
+
+        // Timer Countdown
+        const timer = setInterval(() => {
+            setTimeLeft((prev) => {
+                if (prev <= 1) {
+                    clearInterval(timer);
+                    handleExpiration();
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, [bookingId]);
+
+    const handleExpiration = async () => {
+        setIsExpired(true);
+        try {
+            await fetch('/api/xendit-webhook', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    external_id: bookingId,
+                    status: 'EXPIRED',
+                    id: `EXP-${Date.now()}`
+                })
+            });
+        } catch (e) {
+            console.error("Expiration webhook trigger failed", e);
+        }
+    };
+
     const handleSimulatePayment = async () => {
-        if (!isPaymentReady()) return;
+        if (!isPaymentReady() || isExpired) return;
 
         setIsProcessing(true);
         // Simulate network delay
         await new Promise(resolve => setTimeout(resolve, 2000));
 
-        // Call Webhook Simulation (Optional, but good for testing)
-        // In real Xendit, Xendit calls your webhook. Here we manually trigger it or just redirect.
+        // Call Webhook Simulation
         try {
             await fetch('/api/xendit-webhook', {
                 method: 'POST',
@@ -98,27 +135,33 @@ export default function PaymentSimulationPage() {
             <p style={{ fontSize: '0.9rem', color: '#6b7280' }}>Select Payment Method:</p>
             <button
                 onClick={() => setCurrentMethod('BANK_TRANSFER')}
+                disabled={isExpired}
                 style={{
-                    padding: '15px', border: '1px solid #d1d5db', borderRadius: '8px', background: 'white',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', fontWeight: 'bold'
+                    padding: '15px', border: '1px solid #d1d5db', borderRadius: '8px', background: isExpired ? '#f3f4f6' : 'white',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', fontWeight: 'bold',
+                    opacity: isExpired ? 0.6 : 1
                 }}
             >
                 Bank Transfer (VA)
             </button>
             <button
                 onClick={() => setCurrentMethod('CREDIT_CARD')}
+                disabled={isExpired}
                 style={{
-                    padding: '15px', border: '1px solid #d1d5db', borderRadius: '8px', background: 'white',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', fontWeight: 'bold'
+                    padding: '15px', border: '1px solid #d1d5db', borderRadius: '8px', background: isExpired ? '#f3f4f6' : 'white',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', fontWeight: 'bold',
+                    opacity: isExpired ? 0.6 : 1
                 }}
             >
                 <CreditCard size={20} /> Credit Card
             </button>
             <button
                 onClick={() => setCurrentMethod('QRIS')}
+                disabled={isExpired}
                 style={{
-                    padding: '15px', border: '1px solid #d1d5db', borderRadius: '8px', background: 'white',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', fontWeight: 'bold'
+                    padding: '15px', border: '1px solid #d1d5db', borderRadius: '8px', background: isExpired ? '#f3f4f6' : 'white',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', fontWeight: 'bold',
+                    opacity: isExpired ? 0.6 : 1
                 }}
             >
                 <QrCode size={20} /> QRIS
@@ -138,7 +181,8 @@ export default function PaymentSimulationPage() {
                 <div style={{ textAlign: 'center', margin: '1rem 0' }}>
                     <div style={{
                         width: '200px', height: '200px', background: 'white', margin: '0 auto',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #000'
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #000',
+                        opacity: isExpired ? 0.5 : 1
                     }}>
                         {/* Placeholder QR */}
                         <img
@@ -158,6 +202,7 @@ export default function PaymentSimulationPage() {
                             <button
                                 key={bank}
                                 onClick={() => setSelectedBank(bank)}
+                                disabled={isExpired}
                                 style={{
                                     height: '60px',
                                     border: '1px solid #e5e7eb',
@@ -167,7 +212,8 @@ export default function PaymentSimulationPage() {
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    padding: '5px'
+                                    padding: '5px',
+                                    opacity: isExpired ? 0.5 : 1
                                 }}
                             >
                                 <img src={LOGO_URLS[bank]} alt={bank} style={{ maxHeight: '30px', maxWidth: '100%', objectFit: 'contain' }} />
@@ -180,13 +226,14 @@ export default function PaymentSimulationPage() {
                     <div style={{ margin: '1rem 0' }}>
                         <button
                             onClick={() => setSelectedBank(null)}
+                            disabled={isExpired}
                             style={{
                                 fontSize: '0.8rem', color: '#2563eb', background: 'none', border: 'none', cursor: 'pointer', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '4px'
                             }}
                         >
                             <ChevronLeft size={16} /> Change Bank
                         </button>
-                        <div style={{ textAlign: 'center', padding: '20px', background: '#fffbeb', borderRadius: '8px', border: '1px solid #fbbf24' }}>
+                        <div style={{ textAlign: 'center', padding: '20px', background: '#fffbeb', borderRadius: '8px', border: '1px solid #fbbf24', opacity: isExpired ? 0.6 : 1 }}>
                             <img src={LOGO_URLS[selectedBank]} alt={selectedBank} style={{ height: '30px', marginBottom: '10px' }} />
                             <p style={{ fontSize: '1.2rem', fontWeight: 'bold', letterSpacing: '1px' }}>8800 1234 5678</p>
                         </div>
@@ -202,6 +249,7 @@ export default function PaymentSimulationPage() {
                             <button
                                 key={type}
                                 onClick={() => setSelectedCardType(type)}
+                                disabled={isExpired}
                                 style={{
                                     width: '100px',
                                     height: '60px',
@@ -209,7 +257,8 @@ export default function PaymentSimulationPage() {
                                     borderRadius: '8px',
                                     background: 'white',
                                     cursor: 'pointer',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px'
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px',
+                                    opacity: isExpired ? 0.5 : 1
                                 }}
                             >
                                 <img src={LOGO_URLS[type]} alt={type} style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
@@ -219,7 +268,7 @@ export default function PaymentSimulationPage() {
                 );
             } else {
                 content = (
-                    <div style={{ margin: '1rem 0' }}>
+                    <div style={{ margin: '1rem 0', opacity: isExpired ? 0.6 : 1, pointerEvents: isExpired ? 'none' : 'auto' }}>
                         <button
                             onClick={() => setSelectedCardType(null)}
                             style={{
@@ -262,7 +311,7 @@ export default function PaymentSimulationPage() {
             <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                     <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>{title}</h3>
-                    {!initialPaymentMethod && (
+                    {!initialPaymentMethod && !isExpired && (
                         <button onClick={() => setCurrentMethod(null)} style={{ fontSize: '0.8rem', color: '#6b7280' }}>Change</button>
                     )}
                 </div>
@@ -277,22 +326,35 @@ export default function PaymentSimulationPage() {
                 <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
                     <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#1f2937' }}>Payment Simulation</h2>
                     <p style={{ color: '#6b7280' }}>Total: IDR {parseInt(amount).toLocaleString()}</p>
+
+                    {/* Timer UI */}
+                    <div style={{
+                        marginTop: '10px',
+                        padding: '8px',
+                        background: isExpired ? '#fee2e2' : '#dbeafe',
+                        color: isExpired ? '#b91c1c' : '#1e40af',
+                        borderRadius: '6px',
+                        fontWeight: 'bold',
+                        fontSize: '0.9rem'
+                    }}>
+                        {isExpired ? "PAYMENT EXPIRED" : `Time Remaining: ${timeLeft}s`}
+                    </div>
                 </div>
 
                 {renderPaymentDetails()}
 
                 <button
                     onClick={handleSimulatePayment}
-                    disabled={isProcessing || !isPaymentReady()}
+                    disabled={isProcessing || !isPaymentReady() || isExpired}
                     style={{
                         width: '100%', padding: '0.9rem', marginTop: '1rem',
-                        background: isPaymentReady() ? '#2563eb' : '#cbd5e1',
+                        background: (isPaymentReady() && !isExpired) ? '#2563eb' : '#cbd5e1',
                         color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold',
-                        cursor: isPaymentReady() ? 'pointer' : 'not-allowed',
+                        cursor: (isPaymentReady() && !isExpired) ? 'pointer' : 'not-allowed',
                         display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px'
                     }}
                 >
-                    {isProcessing ? <><Loader2 className="animate-spin" /> Processing...</> : 'Pay Now'}
+                    {isProcessing ? <><Loader2 className="animate-spin" /> Processing...</> : isExpired ? 'Expired' : 'Pay Now'}
                 </button>
             </div>
         </div>

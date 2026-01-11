@@ -74,6 +74,19 @@ export default function HomePage() {
         });
     };
 
+    const handleSearch = () => {
+        if (!searchData.checkIn || !searchData.checkOut) {
+            alert("Please select Check In and Check Out dates");
+            return;
+        }
+        const query = new URLSearchParams({
+            checkIn: searchData.checkIn,
+            checkOut: searchData.checkOut,
+            guests: searchData.guests
+        }).toString();
+        router.push(`/booking-page/custom?${query}`);
+    };
+
     return (
         <div className="homepage">
             {/* HEADER / NAVBAR */}
@@ -95,7 +108,7 @@ export default function HomePage() {
                             <a href="#about" className="nav-link">About</a>
                             <a href="#contact" className="nav-link">Contact</a>
                         </nav>
-                        <button className="book-btn" onClick={() => router.push('/booking-page/${selectedPackage.id}')}>Book Now</button>
+                        <button className="book-btn" onClick={() => router.push('#packages')}>Book Now</button>
                     </div>
                 </div>
             </header>
@@ -147,7 +160,7 @@ export default function HomePage() {
                                     </select>
                                 </div>
                             </div>
-                            <button className="search-btn">
+                            <button className="search-btn" onClick={handleSearch}>
                                 <Search size={20} />
                                 <span>Search</span>
                             </button>
