@@ -44,7 +44,8 @@
 
 .search-field input,
 .search-field select {
-    padding: 10px;
+    padding: 0 15px;
+    height: 42px;
     border: 1px solid #6f7986;
     border-radius: 6px;
     font-size: 0.9rem;
@@ -52,10 +53,14 @@
 }
 
 .check-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     background: #facc15;
     color: #1e293b;
     border: none;
-    padding: 12px 25px;
+    padding: 0 25px;
+    /* Adjust padding since height is fixed */
     border-radius: 6px;
     font-weight: 700;
     cursor: pointer;
@@ -175,6 +180,10 @@
 }
 
 .add-room-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
     background: #3b82f6;
     color: white;
     width: 100%;

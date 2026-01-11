@@ -127,37 +127,65 @@ export default function BookingPage() {
         setShowSummary(true);
     };
 
+    const handleMobileChange = (e) => {
+        const value = e.target.value;
+        // Allow only numbers and '+' at the beginning
+        if (/^\+?[0-9]*$/.test(value)) {
+            setGuestInfo((prev) => ({ ...prev, mobile: value }));
+        }
+    };
+
     // ==========================================
-    // LOGIKA REDIRECT XENDIT
+    // LOGIKA REDIRECT XENDIT (UPDATED)
     // ==========================================
     const handlePayment = async () => {
         setIsProcessing(true);
 
         const totalAmount = selectedRoom.price * searchParams.nights * bookingQty;
+        const bookingId = `TDR${Date.now()}`;
+
         const invoicePayload = {
-            external_id: `INV-${Date.now()}`,
+            externalId: bookingId,
             amount: totalAmount,
-            payer_email: guestInfo.email,
-            description: `Booking ${selectedRoom.name}`,
+            payerEmail: guestInfo.email,
+            paymentMethod: guestInfo.paymentMethod, // Kirim metode pembayaran
+            description: `Booking ${selectedRoom.name} - ${searchParams.nights} malam`,
+            successRedirectUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/booking/success?bookingId=${bookingId}`,
+            failureRedirectUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/booking/failed?bookingId=${bookingId}`
         };
 
         try {
-            console.log("🔵 Menghubungkan ke Xendit Payment Gateway...");
+            console.log("🔵 Memulai pembuatan invoice...");
 
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            const response = await fetch('/api/create-invoice', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(invoicePayload)
+            });
 
-            const dummyXenditUrl = "https://checkout-staging.xendit.co/web-checkout-v2";
+            const data = await response.json();
 
-            console.log("✅ Redirecting to:", dummyXenditUrl);
+            if (!data.success) {
+                // Ini akan menangkap error "API key invalid" yang dikirim backend
+                throw new Error(data.error || 'Gagal membuat invoice');
+            }
 
-            // EKSEKUSI REDIRECT
+            console.log("✅ Invoice Berhasil:", data.invoiceUrl);
+
+            // Redirect ke Xendit
             if (typeof window !== 'undefined') {
-                window.location.href = dummyXenditUrl;
+                localStorage.setItem('currentBooking', JSON.stringify({
+                    bookingId,
+                    guestInfo,
+                    totalAmount
+                }));
+                window.location.href = data.invoiceUrl;
             }
 
         } catch (error) {
-            console.error("Payment Error:", error);
-            alert("Gagal koneksi ke Payment Gateway.");
+            console.error("❌ Payment Error:", error);
+            alert(`Error: ${error.message}`);
+        } finally {
             setIsProcessing(false);
         }
     };
@@ -272,7 +300,7 @@ export default function BookingPage() {
                             </div>
                             <div className="form-group">
                                 <label>Mobile Phone *</label>
-                                <input type="text" required value={guestInfo.mobile} onChange={(e) => setGuestInfo({ ...guestInfo, mobile: e.target.value })} />
+                                <input type="text" required value={guestInfo.mobile} onChange={handleMobileChange} />
                             </div>
                             <div className="form-group">
                                 <label>Email *</label>

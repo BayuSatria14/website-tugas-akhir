@@ -51,7 +51,7 @@ export default function PackageDetail() {
         return (
             <div className="error-container">
                 <h2>Package Not Found</h2>
-                <button onClick={() => router.push('/homepage')}>Back to Home</button>
+                <button onClick={() => router.push('/home')}>Back to Home</button>
             </div>
         );
     }
@@ -60,7 +60,7 @@ export default function PackageDetail() {
         <div className="detail-page">
             <header className="detail-nav">
                 <div className="nav-container">
-                    <button onClick={() => router.push('/homepage')} className="back-btn">
+                    <button onClick={() => router.push('/home')} className="back-btn">
                         <ArrowLeft size={20} /> Back to Home
                     </button>
                 </div>
