@@ -108,7 +108,7 @@ export default function HomePage() {
                             <a href="#about" className="nav-link">About</a>
                             <a href="#contact" className="nav-link">Contact</a>
                         </nav>
-                        <button className="book-btn" onClick={() => router.push('#packages')}>Book Now</button>
+                        <button className="book-btn" onClick={() => router.push('/booking-page/custom?reset=true')}>Book Now</button>
                     </div>
                 </div>
             </header>

@@ -95,6 +95,15 @@ export default function GuestDetail({ params: paramsPromise }) {
                     <h3>Reservation Detail</h3>
                     <div className="info-row"><label>Property Name:</label><span>THE DUKUH - Retreat</span></div>
                     <div className="info-row"><label>Booking ID:</label><span>{booking.external_id}</span></div>
+
+                    {/* TAMBAHAN: Kondisional Rendering untuk Package */}
+                    {booking.package_name && (
+                        <div className="info-row">
+                            <label>Package Name:</label>
+                            <span style={{ color: '#d97706', fontWeight: 'bold' }}>{booking.package_name}</span>
+                        </div>
+                    )}
+
                     <div className="info-row">
                         <label>Booking Status:</label>
                         <span className={`badge ${booking.payment_status ? booking.payment_status.toLowerCase() : 'pending'}`}>

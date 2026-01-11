@@ -30,6 +30,7 @@ export async function POST(request) {
                 external_id: externalId,
                 guest_id: guest.id,
                 room_name: body.description,
+                package_name: body.packageName || null,
                 check_in: body.checkIn,
                 check_out: body.checkOut,
                 nights: body.nights,

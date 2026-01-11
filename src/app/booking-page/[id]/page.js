@@ -58,9 +58,9 @@ export default function BookingPage() {
 
     // State untuk Search Bar & Kalender
     const [searchParams, setSearchParams] = useState({
-        checkIn: "2026-01-09",
-        checkOut: "2026-01-14",
-        nights: 5,
+        checkIn: "",
+        checkOut: "",
+        nights: "", // Default kosong
         adult: 2,
         child: 0
     });
@@ -70,8 +70,18 @@ export default function BookingPage() {
         const qCheckIn = searchParamsHooks.get('checkIn');
         const qCheckOut = searchParamsHooks.get('checkOut');
         const qGuests = searchParamsHooks.get('guests');
+        const qReset = searchParamsHooks.get('reset');
 
-        if (qCheckIn && qCheckOut) {
+        if (qReset === 'true') {
+            // Jika reset, kosongkan semua
+            setSearchParams(prev => ({
+                ...prev,
+                checkIn: "",
+                checkOut: "",
+                nights: "",
+                adult: 2
+            }));
+        } else if (qCheckIn && qCheckOut) {
             const start = new Date(qCheckIn);
             const end = new Date(qCheckOut);
             const nights = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
@@ -85,8 +95,24 @@ export default function BookingPage() {
                     adult: qGuests ? parseInt(qGuests) : prev.adult
                 }));
             }
+        } else {
+            // Default jika akses langsung tanpa param (misal refresh)
+            // Bisa atur default date atau biarkan kosong, sesuai request user ingin kosong
+            // Jika id = custom dan tidak ada param, biarkan kosong.
+            // Jika id = package id, biarkan effect bawah yang handle.
+            if (!id || id === 'custom') {
+                // Pastikan kosong
+            } else {
+                // Set default tanggal besok jika akses paket langsung? (Opsional, tapi user minta kosong untuk 'book now')
+                // Kode package logic di bawah akan handle nights, tapi tanggal start perlu set default jika kosong?
+                // Kita set default tanggal besok agar tidak blank sama sekali saat pilih paket
+                const tomorrow = new Date();
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                const dateStr = tomorrow.toISOString().split('T')[0];
+                setSearchParams(prev => ({ ...prev, checkIn: dateStr }));
+            }
         }
-    }, [searchParamsHooks]);
+    }, [searchParamsHooks, id]);
 
     // Effect untuk update duration berdasarkan paket yang dipilih (Prioritas ke-2 jika by Package)
     useEffect(() => {
@@ -98,21 +124,30 @@ export default function BookingPage() {
                 if (match) {
                     const nights = parseInt(match[1]);
 
+                    // Gunakan checkIn yang ada, atau default besok jika kosong
+                    let currentCheckIn = searchParams.checkIn;
+                    if (!currentCheckIn) {
+                        const tomorrow = new Date();
+                        tomorrow.setDate(tomorrow.getDate() + 1);
+                        currentCheckIn = tomorrow.toISOString().split('T')[0];
+                    }
+
                     // Hitung CheckOut baru berdasarkan CheckIn saat ini + nights
-                    const startDate = new Date(searchParams.checkIn);
+                    const startDate = new Date(currentCheckIn);
                     const endDate = new Date(startDate);
                     endDate.setDate(endDate.getDate() + nights);
                     const newCheckOut = endDate.toISOString().split('T')[0];
 
                     setSearchParams(prev => ({
                         ...prev,
-                        nights: nights,
-                        checkOut: newCheckOut
+                        checkIn: currentCheckIn,
+                        checkOut: newCheckOut,
+                        nights: nights
                     }));
                 }
             }
         }
-    }, [id]); // Jalankan perubahan ini hanya saat ID berubah (awal load)
+    }, [id, searchParams.checkIn]); // Tambahkan dependency checkIn agar recalculate jika user ganti tanggal awal di mode paket
 
     const [showRooms, setShowRooms] = useState(false);
     const [activeQtySelector, setActiveQtySelector] = useState(null);
@@ -143,14 +178,18 @@ export default function BookingPage() {
     // LOGIKA KALENDER
     // ==========================================
     const diffDays = (dateIn, dateOut) => {
+        if (!dateIn || !dateOut) return 0;
         const start = new Date(dateIn);
         const end = new Date(dateOut);
         return Math.ceil((end - start) / (1000 * 60 * 60 * 24));
     };
 
     const addDays = (date, days) => {
+        if (!date) return "";
+        const d = parseInt(days);
+        if (isNaN(d)) return "";
         const result = new Date(date);
-        result.setDate(result.getDate() + parseInt(days));
+        result.setDate(result.getDate() + d);
         return result.toISOString().split('T')[0];
     };
 
@@ -206,6 +245,25 @@ export default function BookingPage() {
         }
     };
 
+    const handleCountryChange = (e) => {
+        const selectedCountry = e.target.value;
+        let phoneCode = "";
+
+        switch (selectedCountry) {
+            case "Indonesia": phoneCode = "+62"; break;
+            case "Singapore": phoneCode = "+65"; break;
+            case "Malaysia": phoneCode = "+60"; break;
+            case "Australia": phoneCode = "+61"; break;
+            default: phoneCode = "";
+        }
+
+        setGuestInfo(prev => ({
+            ...prev,
+            country: selectedCountry,
+            mobile: phoneCode
+        }));
+    };
+
     // ==========================================
     // LOGIKA REDIRECT XENDIT (UPDATED)
     // ==========================================
@@ -215,19 +273,22 @@ export default function BookingPage() {
         const totalAmount = selectedRoom.price * searchParams.nights * bookingQty;
         const bookingId = `TDR${Date.now()}`;
 
-        // Di dalam handlePayment, ubah payload:
+        // Cari info paket jika ID bukan 'custom'
+        const pkg = packagesData.find(p => p.id === parseInt(id));
+        const packageName = pkg ? pkg.title : null; // Jika tidak ada paket, set null
+
         const invoicePayload = {
             externalId: bookingId,
             amount: totalAmount,
             payerEmail: guestInfo.email,
             paymentMethod: guestInfo.paymentMethod,
             description: selectedRoom.name,
-            // Tambahkan data tambahan untuk DB
+            packageName: packageName, // <--- TAMBAHAN: Kirim nama paket
             checkIn: searchParams.checkIn,
             checkOut: searchParams.checkOut,
             nights: searchParams.nights,
             qty: bookingQty,
-            guestInfo: guestInfo, // Kirim object guestInfo lengkap
+            guestInfo: guestInfo,
             successRedirectUrl: `${window.location.origin}/booking/success?bookingId=${bookingId}`,
             failureRedirectUrl: `${window.location.origin}/booking/failed?bookingId=${bookingId}`
         };
@@ -244,13 +305,9 @@ export default function BookingPage() {
             const data = await response.json();
 
             if (!data.success) {
-                // Ini akan menangkap error "API key invalid" yang dikirim backend
                 throw new Error(data.error || 'Gagal membuat invoice');
             }
 
-            console.log("✅ Invoice Berhasil:", data.invoiceUrl);
-
-            // Redirect ke Xendit
             if (typeof window !== 'undefined') {
                 localStorage.setItem('currentBooking', JSON.stringify({
                     bookingId,
@@ -372,8 +429,11 @@ export default function BookingPage() {
                         <div className="form-row">
                             <div className="form-group">
                                 <label>Country</label>
-                                <select value={guestInfo.country} onChange={(e) => setGuestInfo({ ...guestInfo, country: e.target.value })}>
-                                    <option>Indonesia</option><option>Singapore</option><option>Australia</option>
+                                <select value={guestInfo.country} onChange={handleCountryChange}>
+                                    <option>Indonesia</option>
+                                    <option>Singapore</option>
+                                    <option>Malaysia</option>
+                                    <option>Australia</option>
                                 </select>
                             </div>
                             <div className="form-group">
