@@ -21,13 +21,18 @@
 /* Header Section */
 .admin-login-header {
     text-align: center;
-    marginBottom: 30px;
+    margin-bottom: 30px;
+    display: flex;
+    /* Added for robust flexible centering if needed, though text-align handles inline */
+    flex-direction: column;
+    align-items: center;
 }
 
 .admin-icon {
     color: #10b981;
     margin-bottom: 10px;
 }
+
 
 .admin-login-header h2 {
     margin: 0;

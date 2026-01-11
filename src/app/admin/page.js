@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Lock, Mail, Eye, EyeOff, ShieldAlert } from 'lucide-react';
+import { supabase } from '@/lib/supabase'; // Pastikan path ini benar
 import './Admin.css';
 
 export default function AdminLogin() {
@@ -10,16 +11,44 @@ export default function AdminLogin() {
     const [showPassword, setShowPassword] = useState(false);
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [loading, setLoading] = useState(false);
 
-    const handleAdminLogin = (e) => {
+    const handleAdminLogin = async (e) => {
         e.preventDefault();
-        // Validasi sesuai kode asli
-        if (email === "admin@thedukuh.com" && password === "admin123") {
-            localStorage.setItem("isAdminAuthenticated", "true");
+        setLoading(true);
+
+        try {
+            // 1. Login menggunakan Supabase Auth
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email: email,
+                password: password,
+            });
+
+            if (error) throw error;
+
+            // 2. Cek Role di tabel Profiles
+            const { data: profile, error: profileError } = await supabase
+                .from('profiles')
+                .select('role')
+                .eq('id', data.user.id)
+                .single();
+
+            if (profileError || profile?.role !== 'admin') {
+                // Jika bukan admin, paksa logout dan beri peringatan
+                await supabase.auth.signOut();
+                alert("Akses Ditolak! Akun ini bukan Administrator.");
+                setLoading(false);
+                return;
+            }
+
+            // 3. Jika Berhasil
             alert("Login Admin Berhasil!");
             router.push("/admin/dashboard");
-        } else {
-            alert("Akses Ditolak! Hanya untuk Administrator.");
+
+        } catch (error) {
+            alert("Login Gagal: " + error.message);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -34,12 +63,13 @@ export default function AdminLogin() {
 
                 <form onSubmit={handleAdminLogin}>
                     <div className="admin-form-group">
-                        <label>Email</label>
+                        <label>Email Admin</label>
                         <div className="admin-input-wrapper">
                             <Mail size={18} className="input-icon-left" />
                             <input
                                 type="email"
-                                placeholder="admin@thedukuh.com"
+                                placeholder="Masukkan email admin"
+                                value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 required
                             />
@@ -53,6 +83,7 @@ export default function AdminLogin() {
                             <input
                                 type={showPassword ? "text" : "password"}
                                 placeholder="••••••••"
+                                value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
                             />
@@ -65,8 +96,8 @@ export default function AdminLogin() {
                         </div>
                     </div>
 
-                    <button type="submit" className="admin-login-btn">
-                        LOGIN
+                    <button type="submit" className="admin-login-btn" disabled={loading}>
+                        {loading ? 'AUTHENTICATING...' : 'LOGIN SYSTEM'}
                     </button>
                 </form>
             </div>
