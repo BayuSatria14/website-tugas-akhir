@@ -144,14 +144,21 @@ export default function BookingPage() {
         const totalAmount = selectedRoom.price * searchParams.nights * bookingQty;
         const bookingId = `TDR${Date.now()}`;
 
+        // Di dalam handlePayment, ubah payload:
         const invoicePayload = {
             externalId: bookingId,
             amount: totalAmount,
             payerEmail: guestInfo.email,
-            paymentMethod: guestInfo.paymentMethod, // Kirim metode pembayaran
-            description: `Booking ${selectedRoom.name} - ${searchParams.nights} malam`,
-            successRedirectUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/booking/success?bookingId=${bookingId}`,
-            failureRedirectUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/booking/failed?bookingId=${bookingId}`
+            paymentMethod: guestInfo.paymentMethod,
+            description: selectedRoom.name,
+            // Tambahkan data tambahan untuk DB
+            checkIn: searchParams.checkIn,
+            checkOut: searchParams.checkOut,
+            nights: searchParams.nights,
+            qty: bookingQty,
+            guestInfo: guestInfo, // Kirim object guestInfo lengkap
+            successRedirectUrl: `${window.location.origin}/booking/success?bookingId=${bookingId}`,
+            failureRedirectUrl: `${window.location.origin}/booking/failed?bookingId=${bookingId}`
         };
 
         try {
@@ -333,7 +340,7 @@ export default function BookingPage() {
 
                         <div className="form-actions">
                             <button type="button" className="btn-back" onClick={() => setShowGuestForm(false)}>Back</button>
-                            <button type="submit" className="btn-confirm-form">Confirm Booking Details</button>
+                            <button type="submit" className="btn-confirm-form">Book</button>
                         </div>
                     </form>
                 </div>

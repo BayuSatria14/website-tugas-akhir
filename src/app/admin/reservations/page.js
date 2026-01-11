@@ -4,19 +4,51 @@ import React, { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import {
     LayoutDashboard, Package, CalendarCheck, Users, Settings,
-    LogOut, MessageSquare, UserCheck, Eye
+    LogOut, MessageSquare, UserCheck, Eye, Loader2
 } from 'lucide-react';
+import { supabase } from '@/lib/supabase'; // PASTIKAN IMPORT INI ADA
 import '../dashboard/Dashboard.css';
 
 export default function ReservationsPage() {
     const router = useRouter();
     const pathname = usePathname();
 
+    // 1. State untuk menampung data dari Supabase
+    const [reservations, setReservations] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    // 2. Gunakan useEffect untuk mengambil data saat halaman dimuat
     useEffect(() => {
+        // Cek Auth
         const auth = localStorage.getItem("isAdminAuthenticated");
         if (auth !== "true") {
             router.push("/admin");
+            return;
         }
+
+        // Fungsi ambil data
+        const fetchReservations = async () => {
+            try {
+                setIsLoading(true);
+                const { data, error } = await supabase
+                    .from('reservations')
+                    .select(`
+                        *,
+                        guests (first_name, last_name, email, phone)
+                    `)
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+                setReservations(data || []);
+            } catch (err) {
+                console.error("Error fetching data:", err.message);
+                alert("Gagal mengambil data reservasi");
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchReservations();
     }, [router]);
 
     const handleLogout = () => {
@@ -34,12 +66,6 @@ export default function ReservationsPage() {
         { path: '/admin/reviews', icon: <MessageSquare size={20} />, label: 'Ulasan' },
         { path: '/admin/settings', icon: <Settings size={20} />, label: 'Pengaturan' }
     ];
-
-    const [allBookings] = useState([
-        { id: "TDR12345678", nama: "Miss Els Van Stappen", email: "els.vanstappen@gmail.com", telp: "0032478977570", negara: "Belgium", alamat: "Antwerp, Belgium", status: "Confirmed", stayDate: "Wed, 04 Feb 2026 - Mon, 09 Feb 2026", night: 5, room: "Suite", totalCost: "9,900,000" },
-        { id: "TDR98765432", nama: "Budi Santoso", email: "budi@example.com", telp: "08123456789", negara: "Indonesia", alamat: "Jakarta, Indonesia", status: "Pending", stayDate: "Fri, 10 Feb 2026 - Sun, 12 Feb 2026", night: 2, room: "Deluxe 05", totalCost: "2,500,000" },
-        { id: "TDR86935425", nama: "Agak Stress", email: "begitulah@yahooo.com", telp: "08128656700", negara: "Barcelona", alamat: "Test, Barcelona", status: "Cancel", stayDate: "Fri, 10 Feb 2026 - Sun, 12 Feb 2026", night: 1, room: "Deluxe 01", totalCost: "1,750,000" }
-    ]);
 
     return (
         <div className="admin-container">
@@ -77,39 +103,51 @@ export default function ReservationsPage() {
 
                 <div className="content-area">
                     <div className="admin-table-container">
-                        <table className="admin-table">
-                            <thead>
-                                <tr>
-                                    <th>Booking ID</th>
-                                    <th>Nama Tamu</th>
-                                    <th>Email</th>
-                                    <th>Status</th>
-                                    <th>Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {allBookings.map((booking) => (
-                                    <tr key={booking.id}>
-                                        <td><strong>{booking.id}</strong></td>
-                                        <td>{booking.nama}</td>
-                                        <td>{booking.email}</td>
-                                        <td>
-                                            <span className={`badge ${booking.status.toLowerCase()}`}>
-                                                {booking.status}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <button
-                                                className="view-btn"
-                                                onClick={() => router.push(`/admin/guest-detail/${booking.id}`)}
-                                            >
-                                                <Eye size={18} />
-                                            </button>
-                                        </td>
+                        {isLoading ? (
+                            <div className="loading-state">
+                                <Loader2 className="animate-spin" /> Mengambil data...
+                            </div>
+                        ) : (
+                            <table className="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>Booking ID</th>
+                                        <th>Nama Tamu</th>
+                                        <th>Email</th>
+                                        <th>Status</th>
+                                        <th>Aksi</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    {reservations.map((res) => (
+                                        <tr key={res.id}>
+                                            <td><strong>{res.external_id}</strong></td>
+                                            {/* Ambil data dari tabel guests hasil join */}
+                                            <td>{res.guests?.first_name} {res.guests?.last_name}</td>
+                                            <td>{res.guests?.email}</td>
+                                            <td>
+                                                <span className={`badge ${res.payment_status?.toLowerCase()}`}>
+                                                    {res.payment_status}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <button
+                                                    className="view-btn"
+                                                    onClick={() => router.push(`/admin/guest-detail/${res.external_id}`)}
+                                                >
+                                                    <Eye size={18} />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {reservations.length === 0 && (
+                                        <tr>
+                                            <td colSpan="5" style={{ textAlign: 'center' }}>Tidak ada data reservasi.</td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        )}
                     </div>
                 </div>
             </main>

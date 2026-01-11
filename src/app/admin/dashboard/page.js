@@ -4,19 +4,75 @@ import React, { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import {
     LayoutDashboard, Package, CalendarCheck, Users, Settings,
-    LogOut, MessageSquare, UserCheck, TrendingUp
+    LogOut, MessageSquare, UserCheck, TrendingUp, Loader2
 } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 import './Dashboard.css';
 
 export default function DashboardPage() {
     const router = useRouter();
     const pathname = usePathname();
 
+    const [recentBookings, setRecentBookings] = useState([]);
+    const [stats, setStats] = useState([
+        { id: 1, label: 'Total Booking', value: '0', icon: <CalendarCheck size={24} />, color: '#4f46e5' },
+        { id: 2, label: 'Paket Aktif', value: '5', icon: <Package size={24} />, color: '#10b981' }, // Hardcoded for now
+        { id: 3, label: 'Total Tamu', value: '0', icon: <Users size={24} />, color: '#f59e0b' },
+        { id: 4, label: 'Pendapatan', value: 'Rp 0', icon: <TrendingUp size={24} />, color: '#ec4899' },
+    ]);
+    const [isLoading, setIsLoading] = useState(true);
+
     useEffect(() => {
         const auth = localStorage.getItem("isAdminAuthenticated");
         if (auth !== "true") {
             router.push("/admin");
+            return;
         }
+
+        const fetchDashboardData = async () => {
+            try {
+                setIsLoading(true);
+
+                // 1. Fetch Recent Reservations (Limit 5)
+                const { data: bookings, error: bookingError } = await supabase
+                    .from('reservations')
+                    .select(`
+                        id, external_id, created_at, check_in, check_out, payment_status, room_name, total_amount,
+                        guests (first_name, last_name)
+                    `)
+                    .order('created_at', { ascending: false })
+                    .limit(5);
+
+                if (bookingError) throw bookingError;
+                setRecentBookings(bookings || []);
+
+                // 2. Fetch Stats (Simple counts)
+                const { count: totalBookings } = await supabase.from('reservations').select('*', { count: 'exact', head: true });
+                const { count: totalGuests } = await supabase.from('guests').select('*', { count: 'exact', head: true });
+
+                // Calculate Revenue (Confirmed/Paid only)
+                const { data: paidBookings } = await supabase
+                    .from('reservations')
+                    .select('total_amount')
+                    .or('payment_status.eq.CONFIRMED,payment_status.eq.PAID');
+
+                const totalRevenue = paidBookings?.reduce((sum, item) => sum + (item.total_amount || 0), 0) || 0;
+
+                setStats(prev => [
+                    { ...prev[0], value: totalBookings || 0 }, // Total Booking
+                    prev[1], // Paket Aktif (Skip)
+                    { ...prev[2], value: totalGuests || 0 }, // Total Tamu
+                    { ...prev[3], value: new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumSignificantDigits: 3 }).format(totalRevenue) } // Pendapatan
+                ]);
+
+            } catch (error) {
+                console.error("Error fetching dashboard data:", error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchDashboardData();
     }, [router]);
 
     const handleLogout = () => {
@@ -35,18 +91,10 @@ export default function DashboardPage() {
         { path: '/admin/settings', icon: <Settings size={20} />, label: 'Pengaturan' }
     ];
 
-    const stats = [
-        { id: 1, label: 'Total Booking', value: '128', icon: <CalendarCheck size={24} />, color: '#4f46e5' },
-        { id: 2, label: 'Paket Aktif', value: '5', icon: <Package size={24} />, color: '#10b981' },
-        { id: 3, label: 'Total Tamu', value: '542', icon: <Users size={24} />, color: '#f59e0b' },
-        { id: 4, label: 'Pendapatan', value: 'Rp 45jt', icon: <TrendingUp size={24} />, color: '#ec4899' },
-    ];
-
-    const [allBookings] = useState([
-        { id: "TDR12345678", nama: "Miss Els Van Stappen", status: "Confirmed", stayDate: "Wed, 04 Feb 2026 - Mon, 09 Feb 2026", room: "Suite" },
-        { id: "TDR98765432", nama: "Budi Santoso", status: "Pending", stayDate: "Fri, 10 Feb 2026 - Sun, 12 Feb 2026", room: "Deluxe 05" },
-        { id: "TDR86935425", nama: "Agak Stress", status: "Cancel", stayDate: "Fri, 10 Feb 2026 - Sun, 12 Feb 2026", room: "Deluxe 01" }
-    ]);
+    const formatDate = (dateString) => {
+        if (!dateString) return '-';
+        return new Date(dateString).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+    };
 
     return (
         <div className="admin-container">
@@ -100,30 +148,37 @@ export default function DashboardPage() {
                     <div className="recent-activity">
                         <h3>Reservasi Terbaru</h3>
                         <div className="admin-table-container">
-                            <table className="admin-table">
-                                <thead>
-                                    <tr>
-                                        <th>Nama Tamu</th>
-                                        <th>Paket</th>
-                                        <th>Checkin - Checkout</th>
-                                        <th>Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {allBookings.map(b => (
-                                        <tr key={b.id}>
-                                            <td>{b.nama}</td>
-                                            <td>{b.room}</td>
-                                            <td>{b.stayDate}</td>
-                                            <td>
-                                                <span className={`badge ${b.status.toLowerCase()}`}>
-                                                    {b.status}
-                                                </span>
-                                            </td>
+                            {isLoading ? (
+                                <div className="p-4 flex items-center gap-2"><Loader2 className="animate-spin" /> Load Data...</div>
+                            ) : (
+                                <table className="admin-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Nama Tamu</th>
+                                            <th>Paket</th>
+                                            <th>Checkin</th>
+                                            <th>Status</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody>
+                                        {recentBookings.map(b => (
+                                            <tr key={b.id}>
+                                                <td>{b.guests?.first_name} {b.guests?.last_name}</td>
+                                                <td>{b.room_name}</td>
+                                                <td>{formatDate(b.check_in)} - {formatDate(b.check_out)}</td>
+                                                <td>
+                                                    <span className={`badge ${b.payment_status ? b.payment_status.toLowerCase() : 'pending'}`}>
+                                                        {b.payment_status || 'PENDING'}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {recentBookings.length === 0 && (
+                                            <tr><td colSpan="4" className="text-center p-4">Belum ada reservasi.</td></tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            )}
                         </div>
                     </div>
                 </div>
