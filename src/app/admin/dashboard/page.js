@@ -16,24 +16,42 @@ export default function DashboardPage() {
     const [recentBookings, setRecentBookings] = useState([]);
     const [stats, setStats] = useState([
         { id: 1, label: 'Total Booking', value: '0', icon: <CalendarCheck size={24} />, color: '#4f46e5' },
-        { id: 2, label: 'Paket Aktif', value: '5', icon: <Package size={24} />, color: '#10b981' }, // Hardcoded for now
+        { id: 2, label: 'Paket Aktif', value: '5', icon: <Package size={24} />, color: '#10b981' },
         { id: 3, label: 'Total Tamu', value: '0', icon: <Users size={24} />, color: '#f59e0b' },
         { id: 4, label: 'Pendapatan', value: 'Rp 0', icon: <TrendingUp size={24} />, color: '#ec4899' },
     ]);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        const auth = localStorage.getItem("isAdminAuthenticated");
-        if (auth !== "true") {
-            router.push("/admin");
-            return;
-        }
+        // PERBAIKAN: Cek session Supabase, bukan localStorage
+        const checkAdminSession = async () => {
+            setIsLoading(true);
+            const { data: { user } } = await supabase.auth.getUser();
+
+            if (!user) {
+                router.push("/admin");
+                return;
+            }
+
+            // Cek role admin di profiles
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('role')
+                .eq('id', user.id)
+                .maybeSingle();
+
+            if (profile?.role !== 'admin') {
+                router.push("/home");
+                return;
+            }
+
+            // Jika admin sah, baru ambil data dashboard
+            await fetchDashboardData();
+        };
 
         const fetchDashboardData = async () => {
             try {
-                setIsLoading(true);
-
-                // 1. Fetch Recent Reservations (Limit 5)
+                // 1. Fetch Recent Reservations
                 const { data: bookings, error: bookingError } = await supabase
                     .from('reservations')
                     .select(`
@@ -46,11 +64,10 @@ export default function DashboardPage() {
                 if (bookingError) throw bookingError;
                 setRecentBookings(bookings || []);
 
-                // 2. Fetch Stats (Simple counts)
+                // 2. Fetch Stats
                 const { count: totalBookings } = await supabase.from('reservations').select('*', { count: 'exact', head: true });
                 const { count: totalGuests } = await supabase.from('guests').select('*', { count: 'exact', head: true });
 
-                // Calculate Revenue (Confirmed/Paid only)
                 const { data: paidBookings } = await supabase
                     .from('reservations')
                     .select('total_amount')
@@ -59,10 +76,10 @@ export default function DashboardPage() {
                 const totalRevenue = paidBookings?.reduce((sum, item) => sum + (item.total_amount || 0), 0) || 0;
 
                 setStats(prev => [
-                    { ...prev[0], value: totalBookings || 0 }, // Total Booking
-                    prev[1], // Paket Aktif (Skip)
-                    { ...prev[2], value: totalGuests || 0 }, // Total Tamu
-                    { ...prev[3], value: new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumSignificantDigits: 3 }).format(totalRevenue) } // Pendapatan
+                    { ...prev[0], value: totalBookings || 0 },
+                    prev[1],
+                    { ...prev[2], value: totalGuests || 0 },
+                    { ...prev[3], value: new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumSignificantDigits: 3 }).format(totalRevenue) }
                 ]);
 
             } catch (error) {
@@ -72,11 +89,13 @@ export default function DashboardPage() {
             }
         };
 
-        fetchDashboardData();
+        checkAdminSession();
     }, [router]);
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
         if (window.confirm("Apakah Anda yakin ingin keluar?")) {
+            await supabase.auth.signOut();
+            // Membersihkan localStorage lama jika masih ada
             localStorage.removeItem("isAdminAuthenticated");
             router.push("/admin");
         }
@@ -173,7 +192,7 @@ export default function DashboardPage() {
                                                 </td>
                                             </tr>
                                         ))}
-                                        {recentBookings.length === 0 && (
+                                        {!isLoading && recentBookings.length === 0 && (
                                             <tr><td colSpan="4" className="text-center p-4">Belum ada reservasi.</td></tr>
                                         )}
                                     </tbody>

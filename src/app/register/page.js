@@ -72,7 +72,7 @@ export default function Register() {
         if (error) {
             alert("Registrasi Gagal: " + error.message);
         } else {
-            alert("Registrasi berhasil! Silakan cek email untuk verifikasi atau silakan login.");
+            alert("Registrasi berhasil! Silakan cek email untuk verifikasi lalu silakan login.");
             router.push("/login");
         }
         setLoading(false);

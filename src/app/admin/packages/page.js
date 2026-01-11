@@ -12,13 +12,6 @@ export default function PackagesPage() {
     const router = useRouter();
     const pathname = usePathname();
 
-    useEffect(() => {
-        const auth = localStorage.getItem("isAdminAuthenticated");
-        if (auth !== "true") {
-            router.push("/admin");
-        }
-    }, [router]);
-
     const handleLogout = () => {
         if (window.confirm("Apakah Anda yakin ingin keluar?")) {
             localStorage.removeItem("isAdminAuthenticated");

@@ -6,54 +6,55 @@ import {
     LayoutDashboard, Package, CalendarCheck, Users, Settings,
     LogOut, MessageSquare, UserCheck, Eye, Loader2
 } from 'lucide-react';
-import { supabase } from '@/lib/supabase'; // PASTIKAN IMPORT INI ADA
+import { supabase } from '@/lib/supabase';
 import '../dashboard/Dashboard.css';
 
 export default function ReservationsPage() {
     const router = useRouter();
     const pathname = usePathname();
 
-    // 1. State untuk menampung data dari Supabase
     const [reservations, setReservations] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
 
-    // 2. Gunakan useEffect untuk mengambil data saat halaman dimuat
-    useEffect(() => {
-        // Cek Auth
-        const auth = localStorage.getItem("isAdminAuthenticated");
-        if (auth !== "true") {
-            router.push("/admin");
-            return;
-        }
-
-        // Fungsi ambil data
-        const fetchReservations = async () => {
-            try {
-                setIsLoading(true);
-                const { data, error } = await supabase
-                    .from('reservations')
-                    .select(`
+    // ==========================================
+    // 1. FUNGSI AMBIL DATA (FETCH)
+    // ==========================================
+    const fetchReservations = async () => {
+        try {
+            setIsLoading(true);
+            const { data, error } = await supabase
+                .from('reservations')
+                .select(`
                         *,
                         guests (first_name, last_name, email, phone)
                     `)
-                    .order('created_at', { ascending: false });
+                .order('created_at', { ascending: false });
 
-                if (error) throw error;
-                setReservations(data || []);
-            } catch (err) {
-                console.error("Error fetching data:", err.message);
-                alert("Gagal mengambil data reservasi");
-            } finally {
-                setIsLoading(false);
-            }
-        };
+            if (error) throw error;
+            setReservations(data || []);
+        } catch (err) {
+            console.error("Error fetching data:", err.message);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
+    // ==========================================
+    // 2. USE EFFECT (Dijalankan saat halaman dimuat)
+    // ==========================================
+    useEffect(() => {
+        // Pengecekan auth dilakukan oleh Middleware, 
+        // jadi kita cukup fokus mengambil data saja.
         fetchReservations();
     }, [router]);
 
-    const handleLogout = () => {
+    // ==========================================
+    // 3. FUNGSI LOGOUT (MENGGUNAKAN SUPABASE)
+    // ==========================================
+    const handleLogout = async () => {
         if (window.confirm("Apakah Anda yakin ingin keluar?")) {
-            localStorage.removeItem("isAdminAuthenticated");
+            await supabase.auth.signOut();
+            localStorage.removeItem("isAdminAuthenticated"); // Bersihkan sisa-sisa lama
             router.push("/admin");
         }
     };
@@ -66,6 +67,11 @@ export default function ReservationsPage() {
         { path: '/admin/reviews', icon: <MessageSquare size={20} />, label: 'Ulasan' },
         { path: '/admin/settings', icon: <Settings size={20} />, label: 'Pengaturan' }
     ];
+
+    const formatDate = (dateString) => {
+        if (!dateString) return '-';
+        return new Date(dateString).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+    };
 
     return (
         <div className="admin-container">
@@ -94,7 +100,7 @@ export default function ReservationsPage() {
 
             <main className="admin-main">
                 <header className="main-header">
-                    <h2>Reservasi</h2>
+                    <h2>Daftar Reservasi</h2>
                     <div className="user-info">
                         <span>Halo, Admin</span>
                         <div className="user-avatar">A</div>
@@ -113,7 +119,7 @@ export default function ReservationsPage() {
                                     <tr>
                                         <th>Booking ID</th>
                                         <th>Nama Tamu</th>
-                                        <th>Email</th>
+                                        <th>Kamar / Unit</th>
                                         <th>Status</th>
                                         <th>Aksi</th>
                                     </tr>
@@ -122,12 +128,11 @@ export default function ReservationsPage() {
                                     {reservations.map((res) => (
                                         <tr key={res.id}>
                                             <td><strong>{res.external_id}</strong></td>
-                                            {/* Ambil data dari tabel guests hasil join */}
                                             <td>{res.guests?.first_name} {res.guests?.last_name}</td>
-                                            <td>{res.guests?.email}</td>
+                                            <td>{res.room_name}</td>
                                             <td>
-                                                <span className={`badge ${res.payment_status?.toLowerCase()}`}>
-                                                    {res.payment_status}
+                                                <span className={`status-badge ${res.payment_status?.toLowerCase() || 'pending'}`}>
+                                                    {res.payment_status || 'PENDING'}
                                                 </span>
                                             </td>
                                             <td>
@@ -142,7 +147,7 @@ export default function ReservationsPage() {
                                     ))}
                                     {reservations.length === 0 && (
                                         <tr>
-                                            <td colSpan="5" style={{ textAlign: 'center' }}>Tidak ada data reservasi.</td>
+                                            <td colSpan="5" style={{ textAlign: 'center', padding: '20px' }}>Tidak ada data reservasi.</td>
                                         </tr>
                                     )}
                                 </tbody>

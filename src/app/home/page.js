@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search, MapPin, Calendar, Users, Check, Star, Phone, Mail, Instagram } from "lucide-react";
+import { Search, MapPin, Calendar, Users, Check, Star, Phone, Mail, Instagram, LogOut } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 import "./Homepage.css";
 
 export default function HomePage() {
@@ -15,6 +16,21 @@ export default function HomePage() {
     });
 
     const [showFavoriteMessage, setShowFavoriteMessage] = useState(null);
+
+    // ==========================================
+    // FUNGSI LOGOUT
+    // ==========================================
+    const handleLogout = async () => {
+        const confirmLogout = window.confirm("Apakah Anda yakin ingin keluar?");
+        if (confirmLogout) {
+            const { error } = await supabase.auth.signOut();
+            if (error) {
+                alert("Gagal logout: " + error.message);
+            } else {
+                router.push("/login");
+            }
+        }
+    };
 
     const packages = [
         {
@@ -93,6 +109,7 @@ export default function HomePage() {
             <header className="navbar">
                 <div className="navbar-container">
                     <div className="navbar-content">
+                        {/* Kiri: Logo */}
                         <div className="logo-section">
                             <div className="logo-box">
                                 <span className="logo-text">TD</span>
@@ -102,13 +119,47 @@ export default function HomePage() {
                                 <p className="brand-subtitle">Yoga & Wellness Center</p>
                             </div>
                         </div>
+
+                        {/* Tengah: Navigasi */}
                         <nav className="nav-links">
                             <a href="#home" className="nav-link active">Home</a>
                             <a href="#packages" className="nav-link">Packages</a>
                             <a href="#about" className="nav-link">About</a>
                             <a href="#contact" className="nav-link">Contact</a>
                         </nav>
-                        <button className="book-btn" onClick={() => router.push('/booking-page/custom?reset=true')}>Book Now</button>
+
+                        {/* Kanan: Tombol Aksi (Book Now & Logout) */}
+                        <div className="navbar-actions" style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                            <button className="book-btn" onClick={() => router.push('/booking-page/custom?reset=true')}>
+                                Book Now
+                            </button>
+                            <button
+                                onClick={handleLogout}
+                                title="Logout"
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    backgroundColor: '#fee2e2',
+                                    color: '#dc2626',
+                                    padding: '10px',
+                                    border: '1px solid #fecaca',
+                                    borderRadius: '8px',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.3s ease'
+                                }}
+                                onMouseOver={(e) => {
+                                    e.currentTarget.style.backgroundColor = '#ef4444';
+                                    e.currentTarget.style.color = 'white';
+                                }}
+                                onMouseOut={(e) => {
+                                    e.currentTarget.style.backgroundColor = '#fee2e2';
+                                    e.currentTarget.style.color = '#dc2626';
+                                }}
+                            >
+                                <LogOut size={20} />
+                            </button>
+                        </div>
                     </div>
                 </div>
             </header>
@@ -274,26 +325,10 @@ export default function HomePage() {
                         </div>
 
                         <div className="about-images">
-                            <img
-                                src="https://images.unsplash.com/photo-1599901860904-17e6ed7083a0?w=600&q=80"
-                                alt="Yoga class"
-                                className="about-img img1"
-                            />
-                            <img
-                                src="https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=600&q=80"
-                                alt="Meditation"
-                                className="about-img img2"
-                            />
-                            <img
-                                src="https://images.unsplash.com/photo-1540206276207-3af25c08abc4?w=600&q=80"
-                                alt="Accommodation"
-                                className="about-img img3"
-                            />
-                            <img
-                                src="https://images.unsplash.com/photo-1515377905703-c4788e51af15?w=600&q=80"
-                                alt="Healthy food"
-                                className="about-img img4"
-                            />
+                            <img src="https://images.unsplash.com/photo-1599901860904-17e6ed7083a0?w=600&q=80" alt="Yoga class" className="about-img img1" />
+                            <img src="https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=600&q=80" alt="Meditation" className="about-img img2" />
+                            <img src="https://images.unsplash.com/photo-1540206276207-3af25c08abc4?w=600&q=80" alt="Accommodation" className="about-img img3" />
+                            <img src="https://images.unsplash.com/photo-1515377905703-c4788e51af15?w=600&q=80" alt="Healthy food" className="about-img img4" />
                         </div>
                     </div>
                 </div>
@@ -303,23 +338,12 @@ export default function HomePage() {
             <section id="contact" className="contact-section">
                 <div className="contact-container">
                     <h3 className="contact-title">Ready to Begin Your Journey?</h3>
-                    <p className="contact-subtitle">
-                        Contact us today to book your transformative retreat experience
-                    </p>
+                    <p className="contact-subtitle">Contact us today to book your transformative retreat experience</p>
 
                     <div className="contact-info">
-                        <div className="contact-item">
-                            <Phone size={24} />
-                            <span>+62 361 123 4567</span>
-                        </div>
-                        <div className="contact-item">
-                            <Mail size={24} />
-                            <span>hello@thedukuhretreat.com</span>
-                        </div>
-                        <div className="contact-item">
-                            <Instagram size={24} />
-                            <span>@thedukuhretreat</span>
-                        </div>
+                        <div className="contact-item"><Phone size={24} /><span>+62 361 123 4567</span></div>
+                        <div className="contact-item"><Mail size={24} /><span>hello@thedukuhretreat.com</span></div>
+                        <div className="contact-item"><Instagram size={24} /><span>@thedukuhretreat</span></div>
                     </div>
 
                     <button className="contact-btn">Book Your Retreat Now</button>
@@ -332,9 +356,7 @@ export default function HomePage() {
                     <div className="footer-grid">
                         <div className="footer-column">
                             <h4 className="footer-title">The Dukuh Retreat</h4>
-                            <p className="footer-text">
-                                Your sanctuary for yoga, wellness, and spiritual growth in beautiful Bali.
-                            </p>
+                            <p className="footer-text">Your sanctuary for yoga, wellness, and spiritual growth in beautiful Bali.</p>
                         </div>
                         <div className="footer-column">
                             <h4 className="footer-title">Quick Links</h4>
@@ -356,16 +378,10 @@ export default function HomePage() {
                         </div>
                         <div className="footer-column">
                             <h4 className="footer-title">Location</h4>
-                            <p className="footer-text">
-                                Jalan Raya Pantai Pasut<br />
-                                Tabanan, Bali 82161<br />
-                                Indonesia
-                            </p>
+                            <p className="footer-text">Jalan Raya Pantai Pasut<br />Tabanan, Bali 82161<br />Indonesia</p>
                         </div>
                     </div>
-                    <div className="footer-bottom">
-                        © 2025 The Dukuh Retreat. All rights reserved.
-                    </div>
+                    <div className="footer-bottom">© 2025 The Dukuh Retreat. All rights reserved.</div>
                 </div>
             </footer>
         </div>
