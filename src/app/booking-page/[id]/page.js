@@ -123,15 +123,12 @@ export default function BookingPage() {
                 }));
             }
         } else {
-            // Default jika akses langsung tanpa param (misal refresh)
-            // Bisa atur default date atau biarkan kosong, sesuai request user ingin kosong
-            // Jika id = custom dan tidak ada param, biarkan kosong.
+
             // Jika id = package id, biarkan effect bawah yang handle.
             if (!id || id === 'custom') {
                 // Pastikan kosong
             } else {
-                // Set default tanggal besok jika akses paket langsung? (Opsional, tapi user minta kosong untuk 'book now')
-                // Kode package logic di bawah akan handle nights, tapi tanggal start perlu set default jika kosong?
+
                 // Kita set default tanggal besok agar tidak blank sama sekali saat pilih paket
                 const tomorrow = new Date();
                 tomorrow.setDate(tomorrow.getDate() + 1);
@@ -314,12 +311,12 @@ export default function BookingPage() {
             payerEmail: guestInfo.email,
             paymentMethod: guestInfo.paymentMethod,
             description: selectedRoom.name,
-            packageName: packageName, // <--- TAMBAHAN: Kirim nama paket
+            packageName: packageName,
             checkIn: searchParams.checkIn,
             checkOut: searchParams.checkOut,
             nights: searchParams.nights,
-            adult: searchParams.adult,
-            child: searchParams.child,
+            adults: parseInt(searchParams.adult),
+            children: parseInt(searchParams.child),
             qty: bookingQty,
             guestInfo: guestInfo,
             successRedirectUrl: `${window.location.origin}/booking/success?bookingId=${bookingId}`,

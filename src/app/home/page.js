@@ -58,8 +58,11 @@ export default function HomePage() {
                     }, {});
 
                     // Cari ID yang paling banyak dipesan
-                    const popularId = Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b);
-                    setMostBookedId(parseInt(popularId));
+                    const keys = Object.keys(counts);
+                    if (keys.length > 0) {
+                        const popularId = keys.reduce((a, b) => counts[a] > counts[b] ? a : b);
+                        setMostBookedId(parseInt(popularId));
+                    }
                 }
                 setPackages(pkgData || []);
             } catch (err) {

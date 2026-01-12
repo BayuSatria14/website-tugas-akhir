@@ -34,6 +34,8 @@ export async function POST(request) {
                 check_in: body.checkIn,
                 check_out: body.checkOut,
                 nights: body.nights,
+                adults: body.adults,
+                children: body.children,
                 qty: body.qty,
                 total_amount: amount,
                 special_request: body.guestInfo.specialRequest,

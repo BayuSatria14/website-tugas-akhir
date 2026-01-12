@@ -1,139 +1,197 @@
-"use client";
+'use client';
 
-import React, { use, useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { ArrowLeft, Edit3, Loader2 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
-import './GuestDetail.css';
+import React, { useState, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
+import {
+    ArrowLeft, User, Mail, Phone, Globe,
+    Calendar, Home, Users, AlertCircle, CreditCard
+} from "lucide-react";
+import "./GuestDetail.css";
 
-export default function GuestDetail({ params: paramsPromise }) {
+export default function GuestDetailPage() {
+    const params = useParams();
     const router = useRouter();
-    const params = use(paramsPromise);
-    const id = params.id; // external_id
+    const idFromParams = params?.id;
 
-    const [booking, setBooking] = useState(null);
-    const [isLoading, setIsLoading] = useState(true);
+    const [guest, setGuest] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [errorMessage, setErrorMessage] = useState(null);
 
     useEffect(() => {
-        const fetchBookingDetail = async () => {
-            try {
-                setIsLoading(true);
-                // Fetch reservation + guest details
-                const { data, error } = await supabase
+        if (idFromParams) {
+            fetchGuestDetail();
+        }
+    }, [idFromParams]);
+
+    const fetchGuestDetail = async () => {
+        try {
+            setLoading(true);
+            setErrorMessage(null);
+
+            let guestId = idFromParams;
+
+            // Logika pendukung: Jika ID adalah Order ID (TDR...), cari UUID guest-nya terlebih dahulu
+            if (idFromParams.startsWith("TDR")) {
+                const { data: resData, error: resError } = await supabase
                     .from('reservations')
-                    .select(`
-                        *,
-                        guests (*)
-                    `)
-                    .eq('external_id', id)
+                    .select('guest_id')
+                    .eq('external_id', idFromParams)
                     .single();
 
-                if (error) throw error;
-                setBooking(data);
-            } catch (err) {
-                console.error("Error fetching booking detail:", err.message);
-            } finally {
-                setIsLoading(false);
+                if (resError || !resData) {
+                    throw new Error("Order ID tidak ditemukan.");
+                }
+                guestId = resData.guest_id;
             }
-        };
 
-        if (id) {
-            fetchBookingDetail();
+            const { data, error } = await supabase
+                .from('guests')
+                .select(`
+                    *,
+                    reservations (*)
+                `)
+                .eq('id', guestId)
+                .single();
+
+            if (error) throw error;
+            setGuest(data);
+        } catch (err) {
+            console.error("Detail Error:", err);
+            setErrorMessage(err.message || "Gagal mengambil data");
+        } finally {
+            setLoading(false);
         }
-    }, [id]);
+    };
 
-    if (isLoading) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                <Loader2 className="animate-spin mr-2" /> Loading data...
+    if (loading) return <div className="detail-container"><p>Loading...</p></div>;
+
+    if (errorMessage) return (
+        <div className="detail-container">
+            <div className="detail-section">
+                <AlertCircle color="red" size={24} style={{ marginBottom: '1rem' }} />
+                <p>{errorMessage}</p>
+                <button onClick={() => router.back()} className="back-btn" style={{ marginTop: '1rem' }}>Back</button>
             </div>
-        );
-    }
-
-    if (!booking) return (
-        <div className="p-10">
-            <h3>Data tidak ditemukan.</h3>
-            <button className="back-btn mt-4" onClick={() => router.push('/admin/reservations')}>
-                <ArrowLeft size={16} /> Kembali
-            </button>
         </div>
     );
-
-    // Format mata uang
-    const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
-    };
-
-    // Format tanggal
-    const formatDate = (dateString) => {
-        if (!dateString) return '-';
-        return new Date(dateString).toLocaleDateString('en-GB', {
-            weekday: 'short', day: 'numeric', month: 'short', year: 'numeric'
-        });
-    };
 
     return (
         <div className="detail-container">
             <header className="detail-header">
-                <button className="back-btn" onClick={() => router.push('/admin/reservations')}>
-                    <ArrowLeft size={20} /> Kembali
+                <button onClick={() => router.back()} className="back-btn">
+                    <ArrowLeft size={18} /> Back
                 </button>
-                <h2>Detail Reservasi: {booking.external_id}</h2>
+                <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: '#1e293b' }}>
+                    Reservation Detail
+                </h2>
             </header>
 
             <div className="detail-grid">
+                {/* Section 1: Guest Information */}
                 <section className="detail-section">
-                    <h3>Guest Contact Detail</h3>
-                    <div className="info-row"><label>Contact Name:</label><span>{booking.guests?.first_name} {booking.guests?.last_name}</span></div>
-                    <div className="info-row"><label>Email Address:</label><span>{booking.guests?.email}</span></div>
-                    <div className="info-row"><label>Country:</label><span>{booking.guests?.country}</span></div>
-                    <div className="info-row"><label>Phone Number:</label><span>{booking.guests?.phone}</span></div>
-                    <div className="info-row"><label>Special Request:</label><span>{booking.special_request || '-'}</span></div>
-                </section>
-
-                <section className="detail-section">
-                    <h3>Reservation Detail</h3>
-                    <div className="info-row"><label>Property Name:</label><span>THE DUKUH - Retreat</span></div>
-                    <div className="info-row"><label>Booking ID:</label><span>{booking.external_id}</span></div>
-
-                    {/* TAMBAHAN: Kondisional Rendering untuk Package */}
-                    {booking.package_name && (
-                        <div className="info-row">
-                            <label>Package Name:</label>
-                            <span style={{ color: '#d97706', fontWeight: 'bold' }}>{booking.package_name}</span>
-                        </div>
-                    )}
-
+                    <h3>Guest Information</h3>
                     <div className="info-row">
-                        <label>Booking Status:</label>
-                        <span className={`badge ${booking.payment_status ? booking.payment_status.toLowerCase() : 'pending'}`}>
-                            {booking.payment_status ? booking.payment_status.toUpperCase() : 'PENDING'}
-                        </span>
+                        <label>First Name</label>
+                        <span>{guest?.first_name}</span>
                     </div>
-                    <div className="info-row"><label>Stay Date:</label><span>{formatDate(booking.check_in)} - {formatDate(booking.check_out)} ({booking.nights} Night(s))</span></div>
+                    <div className="info-row">
+                        <label>Last Name</label>
+                        <span>{guest?.last_name}</span>
+                    </div>
+                    <div className="info-row">
+                        <label>Email Address</label>
+                        <span>{guest?.email}</span>
+                    </div>
+                    <div className="info-row">
+                        <label>Phone Number</label>
+                        <span>{guest?.phone || '-'}</span>
+                    </div>
+                    <div className="info-row">
+                        <label>Country</label>
+                        <span>{guest?.country || '-'}</span>
+                    </div>
                 </section>
-            </div>
 
-            <div className="detail-grid full-width">
+                {/* Section 2: Reservation Summary */}
                 <section className="detail-section">
-                    <h3>Booking Detail</h3>
-                    <div className="info-row"><label>Room Name:</label><span>{booking.room_name}</span></div>
-                    <div className="info-row"><label>Room Required:</label><span>{booking.qty}</span></div>
-                    <div className="info-row"><label>Other Info:</label><span>{booking.other_info || '-'}</span></div>
+                    <h3>Reservation Summary</h3>
+                    {guest?.reservations && guest.reservations.map((res) => (
+                        <React.Fragment key={res.id}>
+                            <div className="info-row">
+                                <label>Status</label>
+                                <span className={`badge ${res.payment_status.toLowerCase()}`}>
+                                    {res.payment_status}
+                                </span>
+                            </div>
+                            <div className="info-row">
+                                <label>Order ID</label>
+                                <span>{res.external_id}</span>
+                            </div>
+                            <div className="info-row">
+                                <label>Package / Room</label>
+                                <span>{res.package_name ? `${res.package_name} (${res.room_name})` : res.room_name}</span>
+                            </div>
+                            <div className="info-row">
+                                <label>Total Guests</label>
+                                <span style={{ fontWeight: '600' }}>
+                                    {res.adults || 0} Adults, {res.children || 0} Children
+                                </span>
+                            </div>
+                            <div className="info-row">
+                                <label>Stay Duration</label>
+                                <span>{res.check_in} to {res.check_out} ({res.nights} Nights)</span>
+                            </div>
+                        </React.Fragment>
+                    ))}
                 </section>
 
+                {/* Section 3: Payment Detail */}
                 <section className="detail-section">
                     <h3>Payment Detail</h3>
-                    <div className="info-row"><label>Method:</label><span className="payment-method-badge">{booking.payment_method || '-'}</span></div>
-                    <div className="info-row"><label>Total Amount:</label><span className="price-text">{formatCurrency(booking.total_amount)}</span></div>
+                    {guest?.reservations && guest.reservations.map((res) => (
+                        <React.Fragment key={res.id}>
+                            <div className="info-row">
+                                <label>Payment Method</label>
+                                <span className="payment-method-badge">
+                                    <CreditCard size={14} style={{ marginRight: '8px' }} />
+                                    {res.payment_method || 'PENDING'}
+                                </span>
+                            </div>
+                            <div className="info-row" style={{ marginTop: '1rem' }}>
+                                <label>Total Amount</label>
+                                <span className="price-text">
+                                    IDR {res.total_amount?.toLocaleString('id-ID')}
+                                </span>
+                            </div>
+                        </React.Fragment>
+                    ))}
+                </section>
+
+                {/* Section 4: Additional Requirements */}
+                <section className="detail-section">
+                    <h3>Additional Requirements</h3>
+                    {guest?.reservations && guest.reservations.map((res) => (
+                        <React.Fragment key={res.id}>
+                            <div className="info-row">
+                                <label>Special Requests</label>
+                                <span>{res.special_request || 'None'}</span>
+                            </div>
+                            <div className="info-row">
+                                <label>Other Info</label>
+                                <span>{(res.other_info || '').split('(Details:')[0].trim() || '-'}</span>
+                            </div>
+                        </React.Fragment>
+                    ))}
                 </section>
             </div>
 
-            <footer className="detail-actions">
-                <button className="action-btn amend"><Edit3 size={16} /> Edit Reservation</button>
-                <button className="action-btn secondary">Transaction Detail</button>
-                <button className="action-btn noshow">Set No Show</button>
-            </footer>
+            {/* Bottom Actions */}
+            <div className="detail-actions">
+                <button className="action-btn amend">Amend Booking</button>
+                <button className="action-btn secondary">Print Invoice</button>
+                <button className="action-btn noshow">Mark as No-Show</button>
+            </div>
         </div>
     );
 }
