@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import {
     LayoutDashboard, Package, CalendarCheck, Settings,
-    LogOut, MessageSquare, UserCheck, Loader2, Send, User
+    LogOut, MessageSquare, UserCheck, Loader2, Send, User, ChevronRight, ArrowLeft
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 // Menggunakan Dashboard.css untuk layout utama (Sidebar & Header)
@@ -13,6 +13,7 @@ export default function GuestManagementPage() {
     const router = useRouter();
     const pathname = usePathname();
     const [packageGuests, setPackageGuests] = useState([]);
+    const [selectedGuest, setSelectedGuest] = useState(null); // State untuk tamu yang dipilih
     const [isLoading, setIsLoading] = useState(true);
     const [isUpdating, setIsUpdating] = useState(false);
 
@@ -40,12 +41,13 @@ export default function GuestManagementPage() {
         }
     };
 
+    // FUNGSI YANG BARU ANDA BERIKAN (SUDAH TERINTEGRASI)
     const handleUpdateItinerary = async (resId, newItinerary, guestEmail) => {
-        if (!window.confirm("Simpan perubahan jadwal dan kirim email notifikasi ke tamu?")) return;
+        if (!window.confirm("Simpan perubahan jadwal dan kirim email ke tamu?")) return;
 
         setIsUpdating(true);
         try {
-            // 1. Update ke Database
+            // 1. Simpan ke database
             const { error } = await supabase
                 .from('reservations')
                 .update({ itinerary: newItinerary })
@@ -53,33 +55,41 @@ export default function GuestManagementPage() {
 
             if (error) throw error;
 
-            // 2. Kirim email update real-time
-            const emailContent = `
-                <div style="font-family: Arial, sans-serif; max-width: 600px; padding: 20px; border: 1px solid #eee;">
-                    <h2 style="color: #4f46e5;">Pembaruan Jadwal Kegiatan</h2>
-                    <p>Halo, terdapat perubahan pada jadwal kegiatan paket Anda. Berikut adalah jadwal terbaru Anda:</p>
-                    <table width="100%" style="border-collapse: collapse; margin-top: 20px;">
+            // 2. Susun HTML Email baru sesuai permintaan Anda
+            const htmlUpdate = `
+                <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #eee;">
+                    <h3 style="color: #4f46e5;">📢 Pembaruan Jadwal Kegiatan</h3>
+                    <p>Halo, terdapat perubahan pada jadwal kegiatan untuk kunjungan Anda di <b>The Dukuh Retreat</b>. Berikut jadwal terbaru Anda:</p>
+                    <table width="100%" border="1" cellpadding="10" style="border-collapse: collapse; border: 1px solid #ddd;">
+                        <tr style="background: #f8fafc;"><th>Hari</th><th>Aktivitas</th></tr>
                         ${newItinerary.map(i => `
-                            <tr>
-                                <td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: bold; width: 80px;">Hari ${i.day}</td>
-                                <td style="padding: 10px; border-bottom: 1px solid #eee;">${i.activities}</td>
-                            </tr>
+                            <tr><td align="center"><b>${i.day}</b></td><td>${i.activities}</td></tr>
                         `).join('')}
                     </table>
-                    <p style="margin-top: 20px;">Sampai jumpa di The Dukuh Retreat!</p>
+                    <p style="margin-top: 20px;">Jika ada pertanyaan, silakan hubungi kami melalui WhatsApp.</p>
                 </div>
             `;
 
-            await fetch('/api/send-email-update', {
+            // 3. Panggil API Send Update
+            const response = await fetch('/api/send-email-update', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ to: guestEmail, subject: "Update Jadwal Kegiatan - The Dukuh Retreat", html: emailContent })
+                body: JSON.stringify({
+                    to: guestEmail,
+                    subject: "UPDATE JADWAL: Kegiatan Wellness Anda",
+                    html: htmlUpdate
+                })
             });
 
-            alert("Jadwal berhasil diperbarui & Email terkirim!");
+            const resData = await response.json();
+            if (!response.ok) throw new Error(resData.error);
+
+            alert("Berhasil! Jadwal diupdate dan email notifikasi telah dikirim ke tamu.");
             fetchPackageGuests();
+            // Setelah berhasil, tetap di halaman editor atau bisa di-null-kan jika ingin balik ke list
+            // setSelectedGuest(null); 
         } catch (err) {
-            alert("Gagal update: " + err.message);
+            alert("Gagal: " + err.message);
         } finally {
             setIsUpdating(false);
         }
@@ -96,97 +106,39 @@ export default function GuestManagementPage() {
 
     return (
         <div className="admin-container">
-            {/* INLINE STYLES UNTUK GUEST MANAGEMENT */}
             <style jsx>{`
-                .guest-list-grid {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
-                    gap: 25px;
-                    margin-top: 20px;
+                .guest-list-container { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; }
+                .guest-item-card {
+                    background: white; border-radius: 12px; padding: 16px 20px;
+                    display: flex; justify-content: space-between; align-items: center;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.04); border: 1px solid #f0f0f0;
+                    cursor: pointer; transition: all 0.2s ease;
                 }
-                .guest-card-itinerary {
-                    background: white;
-                    border-radius: 12px;
-                    padding: 24px;
-                    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-                    border: 1px solid #f0f0f0;
+                .guest-item-card:hover { border-color: #4f46e5; background-color: #f9fafb; transform: translateX(4px); }
+                .guest-item-info { display: flex; align-items: center; gap: 15px; }
+                .avatar-small {
+                    width: 40px; height: 40px; background: #4f46e510; color: #4f46e5;
+                    border-radius: 50%; display: flex; align-items: center; justify-content: center;
                 }
-                .guest-info-header {
-                    display: flex;
-                    align-items: center;
-                    gap: 15px;
-                    margin-bottom: 20px;
-                    padding-bottom: 15px;
-                    border-bottom: 1px solid #f0f0f0;
+                .guest-text h4 { margin: 0; font-size: 15px; color: #1f2937; font-weight: 600; }
+                .guest-text p { margin: 2px 0 0; font-size: 12px; color: #6b7280; }
+                .back-header {
+                    display: flex; align-items: center; gap: 8px; margin-bottom: 20px;
+                    cursor: pointer; color: #4f46e5; font-weight: 600; font-size: 14px;
                 }
-                .avatar-circle {
-                    width: 45px;
-                    height: 45px;
-                    background: #4f46e520;
-                    color: #4f46e5;
-                    border-radius: 50%;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                }
-                .guest-meta h4 { margin: 0; color: #1f2937; font-size: 16px; }
-                .guest-meta p { margin: 2px 0 0; color: #6b7280; font-size: 13px; }
-                
-                .itinerary-edit-section h5 {
-                    font-size: 14px;
-                    color: #374151;
-                    margin-bottom: 15px;
-                    font-weight: 600;
-                }
-                .itin-input-group {
-                    margin-bottom: 12px;
-                    display: flex;
-                    flex-direction: column;
-                    gap: 5px;
-                }
-                .itin-input-group span {
-                    font-size: 12px;
-                    font-weight: 600;
-                    color: #4f46e5;
-                    text-transform: uppercase;
-                }
+                .detail-container { background: white; border-radius: 12px; padding: 24px; border: 1px solid #f0f0f0; }
+                .itin-input-group { margin-bottom: 15px; display: flex; flex-direction: column; gap: 6px; }
+                .itin-input-group span { font-size: 12px; font-weight: 700; color: #4f46e5; text-transform: uppercase; }
                 .itin-input-group textarea {
-                    width: 100%;
-                    min-height: 80px;
-                    padding: 10px;
-                    border: 1px solid #d1d5db;
-                    border-radius: 8px;
-                    font-size: 14px;
-                    resize: vertical;
-                    transition: border-color 0.2s;
-                }
-                .itin-input-group textarea:focus {
-                    outline: none;
-                    border-color: #4f46e5;
-                    ring: 2px solid #4f46e520;
+                    width: 100%; min-height: 100px; padding: 12px; border: 1px solid #d1d5db;
+                    border-radius: 8px; font-size: 14px; resize: vertical; line-height: 1.5;
                 }
                 .save-send-btn {
-                    width: 100%;
-                    background: #4f46e5;
-                    color: white;
-                    border: none;
-                    padding: 12px;
-                    border-radius: 8px;
-                    font-weight: 600;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    gap: 10px;
-                    cursor: pointer;
-                    margin-top: 10px;
-                    transition: background 0.2s;
+                    width: 100%; background: #4f46e5; color: white; border: none;
+                    padding: 14px; border-radius: 8px; font-weight: 600;
+                    display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer;
                 }
-                .save-send-btn:hover { background: #4338ca; }
                 .save-send-btn:disabled { background: #9ca3af; cursor: not-allowed; }
-
-                @media (max-width: 768px) {
-                    .guest-list-grid { grid-template-columns: 1fr; }
-                }
             `}</style>
 
             <aside className="admin-sidebar">
@@ -196,25 +148,19 @@ export default function GuestManagementPage() {
                 </div>
                 <nav className="sidebar-nav">
                     {menuItems.map((item) => (
-                        <button
-                            key={item.path}
-                            className={`nav-item ${pathname === item.path ? 'active' : ''}`}
-                            onClick={() => router.push(item.path)}
-                        >
+                        <button key={item.path} className={`nav-item ${pathname === item.path ? 'active' : ''}`} onClick={() => router.push(item.path)}>
                             {item.icon} {item.label}
                         </button>
                     ))}
                 </nav>
                 <div className="sidebar-footer">
-                    <button className="logout-btn" onClick={() => router.push("/admin")}>
-                        <LogOut size={20} /> Keluar
-                    </button>
+                    <button className="logout-btn" onClick={() => router.push("/admin")}><LogOut size={20} /> Keluar</button>
                 </div>
             </aside>
 
             <main className="admin-main">
                 <header className="main-header">
-                    <h2>Manajemen Tamu (Wellness Package)</h2>
+                    <h2>Manajemen Tamu</h2>
                     <div className="user-info">
                         <span>Halo, Admin</span>
                         <div className="user-avatar">A</div>
@@ -223,59 +169,59 @@ export default function GuestManagementPage() {
 
                 <div className="content-area">
                     {isLoading ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '20px' }}>
-                            <Loader2 className="animate-spin" /> <span>Memuat data tamu...</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '20px' }}><Loader2 className="animate-spin" /> Memuat data...</div>
+                    ) : selectedGuest ? (
+                        /* EDITOR JADWAL */
+                        <div>
+                            <div className="back-header" onClick={() => setSelectedGuest(null)}>
+                                <ArrowLeft size={18} /> Kembali ke Daftar Tamu
+                            </div>
+                            <div className="detail-container">
+                                <div style={{ display: 'flex', gap: '15px', alignItems: 'center', marginBottom: '25px', paddingBottom: '20px', borderBottom: '1px solid #f3f4f6' }}>
+                                    <div className="avatar-small" style={{ width: '48px', height: '48px' }}><User size={26} /></div>
+                                    <div>
+                                        <h3 style={{ margin: 0 }}>{selectedGuest.guests?.first_name} {selectedGuest.guests?.last_name}</h3>
+                                        <p style={{ margin: 0, color: '#6b7280' }}>{selectedGuest.package_name} • {selectedGuest.room_name}</p>
+                                    </div>
+                                </div>
+                                <div className="itinerary-edit-section">
+                                    <h5 style={{ fontSize: '14px', marginBottom: '15px' }}>EDIT JADWAL KEGIATAN</h5>
+                                    {selectedGuest.itinerary?.map((item, index) => (
+                                        <div key={index} className="itin-input-group">
+                                            <span>Hari {item.day}</span>
+                                            <textarea
+                                                value={item.activities}
+                                                onChange={(e) => {
+                                                    const updated = [...selectedGuest.itinerary];
+                                                    updated[index].activities = e.target.value;
+                                                    setSelectedGuest({ ...selectedGuest, itinerary: updated });
+                                                    setPackageGuests(packageGuests.map(g => g.id === selectedGuest.id ? { ...g, itinerary: updated } : g));
+                                                }}
+                                            />
+                                        </div>
+                                    ))}
+                                    <button className="save-send-btn" disabled={isUpdating} onClick={() => handleUpdateItinerary(selectedGuest.id, selectedGuest.itinerary, selectedGuest.guests?.email)}>
+                                        {isUpdating ? "Mengirim..." : <><Send size={18} /> Simpan & Kirim Update</>}
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     ) : (
-                        <div className="guest-list-grid">
+                        /* DAFTAR TAMU */
+                        <div className="guest-list-container">
+                            <h4 style={{ color: '#4b5563', fontSize: '14px' }}>Pilih tamu untuk mengatur jadwal:</h4>
                             {packageGuests.map((res) => (
-                                <div key={res.id} className="guest-card-itinerary">
-                                    <div className="guest-info-header">
-                                        <div className="avatar-circle">
-                                            <User size={24} />
-                                        </div>
-                                        <div className="guest-meta">
+                                <div key={res.id} className="guest-item-card" onClick={() => setSelectedGuest(res)}>
+                                    <div className="guest-item-info">
+                                        <div className="avatar-small"><User size={20} /></div>
+                                        <div className="guest-text">
                                             <h4>{res.guests?.first_name} {res.guests?.last_name}</h4>
                                             <p>{res.package_name} • {res.room_name}</p>
                                         </div>
                                     </div>
-
-                                    <div className="itinerary-edit-section">
-                                        <h5>JADWAL KEGIATAN TAMU</h5>
-                                        {res.itinerary && Array.isArray(res.itinerary) ? (
-                                            res.itinerary.map((item, index) => (
-                                                <div key={index} className="itin-input-group">
-                                                    <span>Hari {item.day}</span>
-                                                    <textarea
-                                                        value={item.activities}
-                                                        onChange={(e) => {
-                                                            const updated = [...res.itinerary];
-                                                            updated[index].activities = e.target.value;
-                                                            setPackageGuests(packageGuests.map(g => g.id === res.id ? { ...g, itinerary: updated } : g));
-                                                        }}
-                                                        placeholder={`Masukkan kegiatan hari ke-${item.day}...`}
-                                                    />
-                                                </div>
-                                            ))
-                                        ) : (
-                                            <p style={{ fontSize: '13px', color: '#ef4444' }}>Data jadwal tidak ditemukan untuk reservasi ini.</p>
-                                        )}
-
-                                        <button
-                                            className="save-send-btn"
-                                            disabled={isUpdating || !res.itinerary}
-                                            onClick={() => handleUpdateItinerary(res.id, res.itinerary, res.guests?.email)}
-                                        >
-                                            {isUpdating ? "Memproses..." : <><Send size={18} /> Simpan & Kirim Update</>}
-                                        </button>
-                                    </div>
+                                    <ChevronRight size={20} color="#9ca3af" />
                                 </div>
                             ))}
-                            {packageGuests.length === 0 && (
-                                <div style={{ textAlign: 'center', padding: '40px', background: '#f9fafb', borderRadius: '12px', gridColumn: '1/-1' }}>
-                                    <p style={{ color: '#6b7280' }}>Tidak ada tamu paket yang sudah melakukan pembayaran.</p>
-                                </div>
-                            )}
                         </div>
                     )}
                 </div>
