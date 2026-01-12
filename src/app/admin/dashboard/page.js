@@ -16,14 +16,13 @@ export default function DashboardPage() {
     const [recentBookings, setRecentBookings] = useState([]);
     const [stats, setStats] = useState([
         { id: 1, label: 'Total Booking', value: '0', icon: <CalendarCheck size={24} />, color: '#4f46e5' },
-        { id: 2, label: 'Paket Aktif', value: '5', icon: <Package size={24} />, color: '#10b981' },
+        { id: 2, label: 'Paket Aktif', value: '0', icon: <Package size={24} />, color: '#10b981' },
         { id: 3, label: 'Total Tamu', value: '0', icon: <Users size={24} />, color: '#f59e0b' },
         { id: 4, label: 'Pendapatan', value: 'Rp 0', icon: <TrendingUp size={24} />, color: '#ec4899' },
     ]);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        // PERBAIKAN: Cek session Supabase, bukan localStorage
         const checkAdminSession = async () => {
             setIsLoading(true);
             const { data: { user } } = await supabase.auth.getUser();
@@ -33,7 +32,6 @@ export default function DashboardPage() {
                 return;
             }
 
-            // Cek role admin di profiles
             const { data: profile } = await supabase
                 .from('profiles')
                 .select('role')
@@ -45,13 +43,12 @@ export default function DashboardPage() {
                 return;
             }
 
-            // Jika admin sah, baru ambil data dashboard
             await fetchDashboardData();
         };
 
         const fetchDashboardData = async () => {
             try {
-                // 1. Fetch Recent Reservations
+                // 1. Ambil Reservasi Terbaru (Limit 5 untuk tabel bawah)
                 const { data: bookings, error: bookingError } = await supabase
                     .from('reservations')
                     .select(`
@@ -64,26 +61,49 @@ export default function DashboardPage() {
                 if (bookingError) throw bookingError;
                 setRecentBookings(bookings || []);
 
-                // 2. Fetch Stats
-                const { count: totalBookings } = await supabase.from('reservations').select('*', { count: 'exact', head: true });
-                const { count: totalGuests } = await supabase.from('guests').select('*', { count: 'exact', head: true });
+                // 2. Hitung Paket Aktif (Terintegrasi dengan tabel packages status 'Active')
+                const { count: activePackagesCount, error: pkgError } = await supabase
+                    .from('packages')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('status', 'Active');
 
-                const { data: paidBookings } = await supabase
+                if (pkgError) throw pkgError;
+
+                // 3. Ambil data untuk Statistik (Hanya CONFIRMED atau PAID)
+                // Kita ambil kolom total_amount, adults, dan children untuk kalkulasi
+                const { data: confirmedData, error: statsError } = await supabase
                     .from('reservations')
-                    .select('total_amount')
+                    .select('total_amount, adults, children')
                     .or('payment_status.eq.CONFIRMED,payment_status.eq.PAID');
 
-                const totalRevenue = paidBookings?.reduce((sum, item) => sum + (item.total_amount || 0), 0) || 0;
+                if (statsError) throw statsError;
 
-                setStats(prev => [
-                    { ...prev[0], value: totalBookings || 0 },
-                    prev[1],
-                    { ...prev[2], value: totalGuests || 0 },
-                    { ...prev[3], value: new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumSignificantDigits: 3 }).format(totalRevenue) }
+                // Kalkulasi data confirmed
+                const totalConfirmedBookings = confirmedData?.length || 0;
+                const totalRevenue = confirmedData?.reduce((sum, item) => sum + (item.total_amount || 0), 0) || 0;
+                // Total Tamu = Penjumlahan kolom adults + children dari semua booking confirmed
+                const totalGuests = confirmedData?.reduce((sum, item) =>
+                    sum + (Number(item.adults) || 0) + (Number(item.children) || 0), 0) || 0;
+
+                // Fungsi format Rupiah yang rapi
+                const formatCurrency = (val) => {
+                    return new Intl.NumberFormat('id-ID', {
+                        style: 'currency',
+                        currency: 'IDR',
+                        minimumFractionDigits: 0,
+                    }).format(val);
+                };
+
+                // Update state stats
+                setStats([
+                    { id: 1, label: 'Total Booking', value: totalConfirmedBookings.toString(), icon: <CalendarCheck size={24} />, color: '#4f46e5' },
+                    { id: 2, label: 'Paket Aktif', value: (activePackagesCount || 0).toString(), icon: <Package size={24} />, color: '#10b981' },
+                    { id: 3, label: 'Total Tamu', value: totalGuests.toString(), icon: <Users size={24} />, color: '#f59e0b' },
+                    { id: 4, label: 'Pendapatan', value: formatCurrency(totalRevenue), icon: <TrendingUp size={24} />, color: '#ec4899' },
                 ]);
 
             } catch (error) {
-                console.error("Error fetching dashboard data:", error);
+                console.error("Error fetching dashboard data:", error.message || error);
             } finally {
                 setIsLoading(false);
             }
@@ -95,7 +115,6 @@ export default function DashboardPage() {
     const handleLogout = async () => {
         if (window.confirm("Apakah Anda yakin ingin keluar?")) {
             await supabase.auth.signOut();
-            // Membersihkan localStorage lama jika masih ada
             localStorage.removeItem("isAdminAuthenticated");
             router.push("/admin");
         }
@@ -168,7 +187,9 @@ export default function DashboardPage() {
                         <h3>Reservasi Terbaru</h3>
                         <div className="admin-table-container">
                             {isLoading ? (
-                                <div className="p-4 flex items-center gap-2"><Loader2 className="animate-spin" /> Load Data...</div>
+                                <div className="p-4 flex items-center gap-2">
+                                    <Loader2 className="animate-spin" /> Load Data...
+                                </div>
                             ) : (
                                 <table className="admin-table">
                                     <thead>
