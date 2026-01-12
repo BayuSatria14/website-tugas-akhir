@@ -3,26 +3,9 @@
 import React, { useState, useEffect } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation"; // Next.js navigation
 import { Calendar, Users, Info, Plus, ChevronDown, Loader2 } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 import "./BookingPage.css";
 
-// Data Package (Disamakan dengan HomePage / PackageDetail)
-const packagesData = [
-    {
-        id: 1,
-        title: "Weekend Yoga Retreat",
-        duration: "3 Days 2 Night",
-    },
-    {
-        id: 2,
-        title: "Ultimate Wellness Package",
-        duration: "5 Days 4 Nights",
-    },
-    {
-        id: 3,
-        title: "Day Pass Experience",
-        duration: "2 Day 1 Nights",
-    }
-];
 
 // Data Kamar (Simulasi Database)
 const roomData = [
@@ -60,16 +43,39 @@ export default function BookingPage() {
     const [searchParams, setSearchParams] = useState({
         checkIn: "",
         checkOut: "",
-        nights: "", // Default kosong
+        nights: "",
         adult: 2,
         child: 0
     });
+
+    // State untuk Package dari DB
+    const [dbPackage, setDbPackage] = useState(null);
+
+    // Fetch Package Data dari DB jika ID != custom
+    useEffect(() => {
+        const fetchPackage = async () => {
+            if (id && id !== 'custom') {
+                const { data, error } = await supabase
+                    .from('packages')
+                    .select('*')
+                    .eq('id', id)
+                    .single();
+                if (error) {
+                    console.error("Error fetching package:", error);
+                } else {
+                    setDbPackage(data);
+                }
+            }
+        };
+        fetchPackage();
+    }, [id]);
 
     // Effect untuk membaca Query Params dari URL (jika ada)
     useEffect(() => {
         const qCheckIn = searchParamsHooks.get('checkIn');
         const qCheckOut = searchParamsHooks.get('checkOut');
         const qGuests = searchParamsHooks.get('guests');
+        const qNights = searchParamsHooks.get('nights');
         const qReset = searchParamsHooks.get('reset');
 
         if (qReset === 'true') {
@@ -95,6 +101,27 @@ export default function BookingPage() {
                     adult: qGuests ? parseInt(qGuests) : prev.adult
                 }));
             }
+        } else if (qNights) {
+            // Case logic: jika ada nights dari URL (misal dari detail package)
+            const n = parseInt(qNights);
+            if (n > 0) {
+                // Set default checkIn besok
+                const tomorrow = new Date();
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                const dateIn = tomorrow.toISOString().split('T')[0];
+
+                // Calc checkout
+                const start = new Date(dateIn);
+                start.setDate(start.getDate() + n);
+                const dateOut = start.toISOString().split('T')[0];
+
+                setSearchParams(prev => ({
+                    ...prev,
+                    checkIn: dateIn,
+                    checkOut: dateOut,
+                    nights: n
+                }));
+            }
         } else {
             // Default jika akses langsung tanpa param (misal refresh)
             // Bisa atur default date atau biarkan kosong, sesuai request user ingin kosong
@@ -116,38 +143,37 @@ export default function BookingPage() {
 
     // Effect untuk update duration berdasarkan paket yang dipilih (Prioritas ke-2 jika by Package)
     useEffect(() => {
-        if (id && id !== 'custom') {
-            const pkg = packagesData.find(p => p.id === parseInt(id));
-            if (pkg) {
-                // Parse "3 Days 2 Night" -> ambil angka sebelum "Night"
-                const match = pkg.duration.match(/(\d+)\s*Night/i);
-                if (match) {
-                    const nights = parseInt(match[1]);
+        // Jangan override jika sudah ada nights dari URL
+        const qNights = searchParamsHooks.get('nights');
+        if (id && id !== 'custom' && !qNights && dbPackage) {
+            // Parse "3 Days 2 Night" -> ambil angka sebelum "Night"
+            const match = dbPackage.duration.match(/(\d+)\s*(?:Night|Malam)/i);
+            if (match) {
+                const nights = parseInt(match[1]);
 
-                    // Gunakan checkIn yang ada, atau default besok jika kosong
-                    let currentCheckIn = searchParams.checkIn;
-                    if (!currentCheckIn) {
-                        const tomorrow = new Date();
-                        tomorrow.setDate(tomorrow.getDate() + 1);
-                        currentCheckIn = tomorrow.toISOString().split('T')[0];
-                    }
-
-                    // Hitung CheckOut baru berdasarkan CheckIn saat ini + nights
-                    const startDate = new Date(currentCheckIn);
-                    const endDate = new Date(startDate);
-                    endDate.setDate(endDate.getDate() + nights);
-                    const newCheckOut = endDate.toISOString().split('T')[0];
-
-                    setSearchParams(prev => ({
-                        ...prev,
-                        checkIn: currentCheckIn,
-                        checkOut: newCheckOut,
-                        nights: nights
-                    }));
+                // Gunakan checkIn yang ada, atau default besok jika kosong
+                let currentCheckIn = searchParams.checkIn;
+                if (!currentCheckIn) {
+                    const tomorrow = new Date();
+                    tomorrow.setDate(tomorrow.getDate() + 1);
+                    currentCheckIn = tomorrow.toISOString().split('T')[0];
                 }
+
+                // Hitung CheckOut baru berdasarkan CheckIn saat ini + nights
+                const startDate = new Date(currentCheckIn);
+                const endDate = new Date(startDate);
+                endDate.setDate(endDate.getDate() + nights);
+                const newCheckOut = endDate.toISOString().split('T')[0];
+
+                setSearchParams(prev => ({
+                    ...prev,
+                    checkIn: currentCheckIn,
+                    checkOut: newCheckOut,
+                    nights: nights
+                }));
             }
         }
-    }, [id, searchParams.checkIn]); // Tambahkan dependency checkIn agar recalculate jika user ganti tanggal awal di mode paket
+    }, [id, searchParams.checkIn, dbPackage]); // Tambahkan dependency checkIn dan dbPackage
 
     const [showRooms, setShowRooms] = useState(false);
     const [activeQtySelector, setActiveQtySelector] = useState(null);
@@ -188,14 +214,20 @@ export default function BookingPage() {
         if (!date) return "";
         const d = parseInt(days);
         if (isNaN(d)) return "";
-        const result = new Date(date);
-        result.setDate(result.getDate() + d);
-        return result.toISOString().split('T')[0];
+
+        const [y, m, da] = date.split('-').map(Number);
+        const result = new Date(y, m - 1, da + d);
+
+        const yy = result.getFullYear();
+        const mm = String(result.getMonth() + 1).padStart(2, '0');
+        const dd = String(result.getDate()).padStart(2, '0');
+        return `${yy}-${mm}-${dd}`;
     };
 
     const handleCheckInChange = (newIn) => {
-        const newOut = addDays(newIn, searchParams.nights);
-        setSearchParams({ ...searchParams, checkIn: newIn, checkOut: newOut });
+        const currentNights = searchParams.nights ? parseInt(searchParams.nights) : 1;
+        const newOut = addDays(newIn, currentNights);
+        setSearchParams({ ...searchParams, checkIn: newIn, checkOut: newOut, nights: currentNights });
     };
 
     const handleCheckOutChange = (newOut) => {
@@ -274,8 +306,7 @@ export default function BookingPage() {
         const bookingId = `TDR${Date.now()}`;
 
         // Cari info paket jika ID bukan 'custom'
-        const pkg = packagesData.find(p => p.id === parseInt(id));
-        const packageName = pkg ? pkg.title : null; // Jika tidak ada paket, set null
+        const packageName = dbPackage ? dbPackage.title : null; // Jika tidak ada paket, set null
 
         const invoicePayload = {
             externalId: bookingId,
@@ -287,6 +318,8 @@ export default function BookingPage() {
             checkIn: searchParams.checkIn,
             checkOut: searchParams.checkOut,
             nights: searchParams.nights,
+            adult: searchParams.adult,
+            child: searchParams.child,
             qty: bookingQty,
             guestInfo: guestInfo,
             successRedirectUrl: `${window.location.origin}/booking/success?bookingId=${bookingId}`,
@@ -485,7 +518,13 @@ export default function BookingPage() {
                         <hr />
                         <div className="summary-content">
                             <p><strong>Tamu:</strong> {guestInfo.title} {guestInfo.firstName} {guestInfo.lastName}</p>
-                            <p><strong>Kamar:</strong> {selectedRoom.name} ({bookingQty} Unit)</p>
+                            {/* Logic: Jika ID bukan custom, tampilkan nama paket. Jika custom, tampilkan nama kamar. */}
+                            {id && id !== 'custom' ? (
+                                <p><strong>Paket:</strong> {dbPackage?.title || selectedRoom.name}</p>
+                            ) : (
+                                <p><strong>Kamar:</strong> {selectedRoom.name}</p>
+                            )}
+                            <p><strong>Jumlah Unit:</strong> {bookingQty}</p>
                             <p><strong>Durasi Menginap:</strong> {searchParams.checkIn} s/d {searchParams.checkOut} ({searchParams.nights} Malam)</p>
                             <p><strong>Pembayaran:</strong> {guestInfo.paymentMethod}</p>
                             <div className="total-section">

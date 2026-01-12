@@ -37,7 +37,9 @@ export async function POST(request) {
                 qty: body.qty,
                 total_amount: amount,
                 special_request: body.guestInfo.specialRequest,
-                other_info: body.guestInfo.otherInfo,
+                special_request: body.guestInfo.specialRequest,
+                other_info: `${body.guestInfo.otherInfo || ''} (Details: ${body.adult} Adults, ${body.child} Children)`,
+                payment_method: body.paymentMethod,
                 payment_method: body.paymentMethod,
                 payment_status: 'PENDING' // Set Explicit Pending
             }]);

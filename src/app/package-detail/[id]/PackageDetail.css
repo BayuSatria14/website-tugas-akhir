@@ -189,3 +189,59 @@
         font-size: 1.8rem;
     }
 }
+
+.itinerary-full-width {
+    margin-top: 40px;
+    background: white;
+    padding: 40px;
+    border-radius: 24px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
+}
+
+.itinerary-header {
+    margin-bottom: 30px;
+}
+
+.itinerary-header h3 {
+    display: flex;
+    align-items: center;
+    font-size: 1.5rem;
+    color: #1e293b;
+    margin-bottom: 5px;
+}
+
+.itinerary-grid-horizontal {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+}
+
+.itinerary-day-card {
+    background: #f8fafc;
+    padding: 25px;
+    border-radius: 20px;
+    border: 1px solid #e2e8f0;
+    transition: transform 0.3s;
+}
+
+.itinerary-day-card:hover {
+    transform: translateY(-5px);
+    border-color: #b45309;
+}
+
+.day-circle {
+    background: #b45309;
+    color: white;
+    width: fit-content;
+    padding: 5px 15px;
+    border-radius: 30px;
+    font-weight: 700;
+    font-size: 0.9rem;
+    margin-bottom: 15px;
+}
+
+.activities-content p {
+    color: #475569;
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
