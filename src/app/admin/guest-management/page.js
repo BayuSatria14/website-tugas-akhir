@@ -1,21 +1,87 @@
 "use client";
-
 import React, { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import {
-    LayoutDashboard, Package, CalendarCheck, Users, Settings,
-    LogOut, MessageSquare, UserCheck, Send
+    LayoutDashboard, Package, CalendarCheck, Settings,
+    LogOut, MessageSquare, UserCheck, Loader2, Send, User
 } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+// Menggunakan Dashboard.css untuk layout utama (Sidebar & Header)
 import '../dashboard/Dashboard.css';
 
 export default function GuestManagementPage() {
     const router = useRouter();
     const pathname = usePathname();
+    const [packageGuests, setPackageGuests] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isUpdating, setIsUpdating] = useState(false);
 
-    const handleLogout = () => {
-        if (window.confirm("Apakah Anda yakin ingin keluar?")) {
-            localStorage.removeItem("isAdminAuthenticated");
-            router.push("/admin");
+    useEffect(() => {
+        fetchPackageGuests();
+    }, []);
+
+    const fetchPackageGuests = async () => {
+        setIsLoading(true);
+        try {
+            // Ambil hanya yang booking paket (package_name not null) dan status CONFIRMED atau PAID
+            const { data, error } = await supabase
+                .from('reservations')
+                .select('*, guests(*)')
+                .not('package_name', 'is', null)
+                .or('payment_status.eq.CONFIRMED,payment_status.eq.PAID')
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            setPackageGuests(data || []);
+        } catch (err) {
+            console.error("Error:", err.message);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleUpdateItinerary = async (resId, newItinerary, guestEmail) => {
+        if (!window.confirm("Simpan perubahan jadwal dan kirim email notifikasi ke tamu?")) return;
+
+        setIsUpdating(true);
+        try {
+            // 1. Update ke Database
+            const { error } = await supabase
+                .from('reservations')
+                .update({ itinerary: newItinerary })
+                .eq('id', resId);
+
+            if (error) throw error;
+
+            // 2. Kirim email update real-time
+            const emailContent = `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; padding: 20px; border: 1px solid #eee;">
+                    <h2 style="color: #4f46e5;">Pembaruan Jadwal Kegiatan</h2>
+                    <p>Halo, terdapat perubahan pada jadwal kegiatan paket Anda. Berikut adalah jadwal terbaru Anda:</p>
+                    <table width="100%" style="border-collapse: collapse; margin-top: 20px;">
+                        ${newItinerary.map(i => `
+                            <tr>
+                                <td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: bold; width: 80px;">Hari ${i.day}</td>
+                                <td style="padding: 10px; border-bottom: 1px solid #eee;">${i.activities}</td>
+                            </tr>
+                        `).join('')}
+                    </table>
+                    <p style="margin-top: 20px;">Sampai jumpa di The Dukuh Retreat!</p>
+                </div>
+            `;
+
+            await fetch('/api/send-email-update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ to: guestEmail, subject: "Update Jadwal Kegiatan - The Dukuh Retreat", html: emailContent })
+            });
+
+            alert("Jadwal berhasil diperbarui & Email terkirim!");
+            fetchPackageGuests();
+        } catch (err) {
+            alert("Gagal update: " + err.message);
+        } finally {
+            setIsUpdating(false);
         }
     };
 
@@ -28,57 +94,101 @@ export default function GuestManagementPage() {
         { path: '/admin/settings', icon: <Settings size={20} />, label: 'Pengaturan' }
     ];
 
-    const [checkedInGuests, setCheckedInGuests] = useState([
-        {
-            id: 1,
-            nama: "Kadek Bayu",
-            email: "bayu@retreat.com",
-            paket: "Ultimate Wellness",
-            room: "Suite 01",
-            activities: [
-                { id: 101, title: "Yoga Shala", time: "05.15", type: "Wellness", reason: "" },
-                { id: 102, title: "Tour Ubud", time: "13.00", type: "Tour", reason: "" }
-            ]
-        },
-        {
-            id: 2,
-            nama: "Siti Aminah",
-            email: "siti@example.com",
-            paket: "Weekend Yoga",
-            room: "Deluxe 05",
-            activities: [
-                { id: 201, title: "Morning Yoga", time: "07.00", type: "Wellness", reason: "" }
-            ]
-        }
-    ]);
-
-    const [selectedGuest, setSelectedGuest] = useState(null);
-
-    const handleUpdateActivityData = (guestId, activityId, newTitle, newTime, newReason) => {
-        const updatedGuests = checkedInGuests.map(guest => {
-            if (guest.id === guestId) {
-                const updatedActivities = guest.activities.map(act =>
-                    act.id === activityId ? { ...act, title: newTitle, time: newTime, reason: newReason } : act
-                );
-                const updatedGuest = { ...guest, activities: updatedActivities };
-                if (selectedGuest?.id === guestId) setSelectedGuest(updatedGuest);
-                return updatedGuest;
-            }
-            return guest;
-        });
-        setCheckedInGuests(updatedGuests);
-    };
-
-    const handleSendNotification = (guest, activity) => {
-        if (!activity.reason || activity.reason.trim() === "") {
-            alert("⚠️ Berikan alasan perubahan!");
-            return;
-        }
-        alert(`✅ NOTIFIKASI TERKIRIM!\nKepada: ${guest.nama}\nKegiatan: ${activity.title}\nAlasan: ${activity.reason}`);
-    };
-
     return (
         <div className="admin-container">
+            {/* INLINE STYLES UNTUK GUEST MANAGEMENT */}
+            <style jsx>{`
+                .guest-list-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
+                    gap: 25px;
+                    margin-top: 20px;
+                }
+                .guest-card-itinerary {
+                    background: white;
+                    border-radius: 12px;
+                    padding: 24px;
+                    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+                    border: 1px solid #f0f0f0;
+                }
+                .guest-info-header {
+                    display: flex;
+                    align-items: center;
+                    gap: 15px;
+                    margin-bottom: 20px;
+                    padding-bottom: 15px;
+                    border-bottom: 1px solid #f0f0f0;
+                }
+                .avatar-circle {
+                    width: 45px;
+                    height: 45px;
+                    background: #4f46e520;
+                    color: #4f46e5;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+                .guest-meta h4 { margin: 0; color: #1f2937; font-size: 16px; }
+                .guest-meta p { margin: 2px 0 0; color: #6b7280; font-size: 13px; }
+                
+                .itinerary-edit-section h5 {
+                    font-size: 14px;
+                    color: #374151;
+                    margin-bottom: 15px;
+                    font-weight: 600;
+                }
+                .itin-input-group {
+                    margin-bottom: 12px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 5px;
+                }
+                .itin-input-group span {
+                    font-size: 12px;
+                    font-weight: 600;
+                    color: #4f46e5;
+                    text-transform: uppercase;
+                }
+                .itin-input-group textarea {
+                    width: 100%;
+                    min-height: 80px;
+                    padding: 10px;
+                    border: 1px solid #d1d5db;
+                    border-radius: 8px;
+                    font-size: 14px;
+                    resize: vertical;
+                    transition: border-color 0.2s;
+                }
+                .itin-input-group textarea:focus {
+                    outline: none;
+                    border-color: #4f46e5;
+                    ring: 2px solid #4f46e520;
+                }
+                .save-send-btn {
+                    width: 100%;
+                    background: #4f46e5;
+                    color: white;
+                    border: none;
+                    padding: 12px;
+                    border-radius: 8px;
+                    font-weight: 600;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 10px;
+                    cursor: pointer;
+                    margin-top: 10px;
+                    transition: background 0.2s;
+                }
+                .save-send-btn:hover { background: #4338ca; }
+                .save-send-btn:disabled { background: #9ca3af; cursor: not-allowed; }
+
+                @media (max-width: 768px) {
+                    .guest-list-grid { grid-template-columns: 1fr; }
+                }
+            `}</style>
+
             <aside className="admin-sidebar">
                 <div className="sidebar-header">
                     <div className="admin-logo">TD</div>
@@ -96,7 +206,7 @@ export default function GuestManagementPage() {
                     ))}
                 </nav>
                 <div className="sidebar-footer">
-                    <button className="logout-btn" onClick={handleLogout}>
+                    <button className="logout-btn" onClick={() => router.push("/admin")}>
                         <LogOut size={20} /> Keluar
                     </button>
                 </div>
@@ -104,7 +214,7 @@ export default function GuestManagementPage() {
 
             <main className="admin-main">
                 <header className="main-header">
-                    <h2>Manajemen Tamu</h2>
+                    <h2>Manajemen Tamu (Wellness Package)</h2>
                     <div className="user-info">
                         <span>Halo, Admin</span>
                         <div className="user-avatar">A</div>
@@ -112,98 +222,62 @@ export default function GuestManagementPage() {
                 </header>
 
                 <div className="content-area">
-                    <div className="checkin-layout">
-                        <div className="guest-list-panel">
-                            <div className="panel-header">
-                                <h3>Guest Data</h3>
-                            </div>
-                            <div className="guest-cards-container">
-                                {checkedInGuests.map(guest => (
-                                    <div
-                                        key={guest.id}
-                                        className={`guest-selection-card ${selectedGuest?.id === guest.id ? 'active' : ''}`}
-                                        onClick={() => setSelectedGuest(guest)}
-                                    >
-                                        <div className="guest-info-brief">
-                                            <strong>{guest.nama}</strong>
-                                            <span>{guest.room} • {guest.paket}</span>
+                    {isLoading ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '20px' }}>
+                            <Loader2 className="animate-spin" /> <span>Memuat data tamu...</span>
+                        </div>
+                    ) : (
+                        <div className="guest-list-grid">
+                            {packageGuests.map((res) => (
+                                <div key={res.id} className="guest-card-itinerary">
+                                    <div className="guest-info-header">
+                                        <div className="avatar-circle">
+                                            <User size={24} />
+                                        </div>
+                                        <div className="guest-meta">
+                                            <h4>{res.guests?.first_name} {res.guests?.last_name}</h4>
+                                            <p>{res.package_name} • {res.room_name}</p>
                                         </div>
                                     </div>
-                                ))}
-                            </div>
-                        </div>
 
-                        <div className="activity-editor-panel">
-                            {selectedGuest ? (
-                                <>
-                                    <div className="editor-header">
-                                        <h4>{selectedGuest.nama}</h4>
-                                        <p>{selectedGuest.email}</p>
+                                    <div className="itinerary-edit-section">
+                                        <h5>JADWAL KEGIATAN TAMU</h5>
+                                        {res.itinerary && Array.isArray(res.itinerary) ? (
+                                            res.itinerary.map((item, index) => (
+                                                <div key={index} className="itin-input-group">
+                                                    <span>Hari {item.day}</span>
+                                                    <textarea
+                                                        value={item.activities}
+                                                        onChange={(e) => {
+                                                            const updated = [...res.itinerary];
+                                                            updated[index].activities = e.target.value;
+                                                            setPackageGuests(packageGuests.map(g => g.id === res.id ? { ...g, itinerary: updated } : g));
+                                                        }}
+                                                        placeholder={`Masukkan kegiatan hari ke-${item.day}...`}
+                                                    />
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <p style={{ fontSize: '13px', color: '#ef4444' }}>Data jadwal tidak ditemukan untuk reservasi ini.</p>
+                                        )}
+
+                                        <button
+                                            className="save-send-btn"
+                                            disabled={isUpdating || !res.itinerary}
+                                            onClick={() => handleUpdateItinerary(res.id, res.itinerary, res.guests?.email)}
+                                        >
+                                            {isUpdating ? "Memproses..." : <><Send size={18} /> Simpan & Kirim Update</>}
+                                        </button>
                                     </div>
-                                    <div className="activity-items-list">
-                                        {selectedGuest.activities.map(act => (
-                                            <div key={act.id} className="activity-row-card">
-                                                <div className="field-group">
-                                                    <label>Kegiatan</label>
-                                                    <input
-                                                        type="text"
-                                                        defaultValue={act.title}
-                                                        onChange={(e) => handleUpdateActivityData(
-                                                            selectedGuest.id,
-                                                            act.id,
-                                                            e.target.value,
-                                                            act.time,
-                                                            act.reason
-                                                        )}
-                                                    />
-                                                </div>
-                                                <div className="field-group time-field">
-                                                    <label>Waktu</label>
-                                                    <input
-                                                        type="text"
-                                                        defaultValue={act.time}
-                                                        onChange={(e) => handleUpdateActivityData(
-                                                            selectedGuest.id,
-                                                            act.id,
-                                                            act.title,
-                                                            e.target.value,
-                                                            act.reason
-                                                        )}
-                                                    />
-                                                </div>
-                                                <div className="field-group">
-                                                    <label>Alasan</label>
-                                                    <input
-                                                        type="text"
-                                                        placeholder="Alasan..."
-                                                        value={act.reason}
-                                                        onChange={(e) => handleUpdateActivityData(
-                                                            selectedGuest.id,
-                                                            act.id,
-                                                            act.title,
-                                                            act.time,
-                                                            e.target.value
-                                                        )}
-                                                    />
-                                                </div>
-                                                <button
-                                                    className="send-notif-btn"
-                                                    onClick={() => handleSendNotification(selectedGuest, act)}
-                                                >
-                                                    <Send size={18} />
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </>
-                            ) : (
-                                <div className="empty-state">
-                                    <UserCheck size={48} />
-                                    <p>Pilih tamu untuk mengelola jadwal</p>
+                                </div>
+                            ))}
+                            {packageGuests.length === 0 && (
+                                <div style={{ textAlign: 'center', padding: '40px', background: '#f9fafb', borderRadius: '12px', gridColumn: '1/-1' }}>
+                                    <p style={{ color: '#6b7280' }}>Tidak ada tamu paket yang sudah melakukan pembayaran.</p>
                                 </div>
                             )}
                         </div>
-                    </div>
+                    )}
                 </div>
             </main>
         </div>
