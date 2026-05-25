@@ -6,27 +6,13 @@ import {
     LayoutDashboard, Package, CalendarCheck, Users, Settings,
     LogOut, MessageSquare, UserCheck, Search, Star, Eye, Trash2
 } from 'lucide-react';
-import '../dashboard/Dashboard.css';
+import { supabase } from '@/lib/supabase';
 
 export default function ReviewsPage() {
     const router = useRouter();
     const pathname = usePathname();
 
-    const handleLogout = () => {
-        if (window.confirm("Apakah Anda yakin ingin keluar?")) {
-            localStorage.removeItem("isAdminAuthenticated");
-            router.push("/admin");
-        }
-    };
 
-    const menuItems = [
-        { path: '/admin/dashboard', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
-        { path: '/admin/packages', icon: <Package size={20} />, label: 'Kelola Packages' },
-        { path: '/admin/guest-management', icon: <UserCheck size={20} />, label: 'Manajemen Tamu' },
-        { path: '/admin/reservations', icon: <CalendarCheck size={20} />, label: 'Reservasi' },
-        { path: '/admin/reviews', icon: <MessageSquare size={20} />, label: 'Ulasan' },
-        { path: '/admin/settings', icon: <Settings size={20} />, label: 'Pengaturan' }
-    ];
 
     const [reviews, setReviews] = useState([
         { id: 1, guestName: "Miss Els Van Stappen", rating: 4, comment: "Tempat yang sangat tenang dan pelayanannya luar biasa.", date: "10 Jan 2026", status: "Published" },
@@ -49,37 +35,33 @@ export default function ReviewsPage() {
     };
 
     return (
-        <div className="admin-container">
-            <aside className="admin-sidebar">
-                <div className="sidebar-header">
-                    <div className="admin-logo">TD</div>
-                    <h3>Admin Panel</h3>
-                </div>
-                <nav className="sidebar-nav">
-                    {menuItems.map((item) => (
-                        <button
-                            key={item.path}
-                            className={`nav-item ${pathname === item.path ? 'active' : ''}`}
-                            onClick={() => router.push(item.path)}
-                        >
-                            {item.icon} {item.label}
-                        </button>
-                    ))}
-                </nav>
-                <div className="sidebar-footer">
-                    <button className="logout-btn" onClick={handleLogout}>
-                        <LogOut size={20} /> Keluar
-                    </button>
-                </div>
-            </aside>
+        <>
+            <style jsx>{`
+                .ulasan-section { background: white; border-radius: 16px; padding: 32px; border: 1px solid rgba(0,0,0,0.04); box-shadow: 0 4px 20px rgba(0,0,0,0.03); }
+                .section-header-flex { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+                .section-header-flex h3 { font-family: 'Playfair Display', serif; font-size: 20px; color: #1A1A1A; margin: 0; }
+                .search-box {
+                    display: flex; align-items: center; gap: 10px; background: #FAFAF7;
+                    padding: 10px 16px; border-radius: 10px; border: 1px solid #E8E5E0; transition: border-color 0.3s;
+                }
+                .search-box:focus-within { border-color: #8B7355; }
+                .search-box input { border: none; background: transparent; outline: none; font-family: 'Inter', sans-serif; font-size: 14px; color: #1A1A1A; }
+                .rating-stars { display: flex; gap: 2px; }
+                .review-comment-cell { max-width: 300px; line-height: 1.5; color: #6B6B6B; }
+                .action-btns { display: flex; gap: 8px; }
+                .action-btns button {
+                    background: #FAFAF7; border: 1px solid #E8E5E0; padding: 8px; border-radius: 6px; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center;
+                }
+                .edit-btn { color: #8B7355; }
+                .edit-btn:hover { background: #8B7355; color: white; }
+                .delete-btn { color: #EF4444; }
+                .delete-btn:hover { background: #EF4444; color: white; border-color: #EF4444; }
+                .badge.success { background: #D1FAE5; color: #059669; }
+                .badge.warning { background: #FEF3C7; color: #D97706; }
+            `}</style>
 
-            <main className="admin-main">
                 <header className="main-header">
                     <h2>Ulasan</h2>
-                    <div className="user-info">
-                        <span>Halo, Admin</span>
-                        <div className="user-avatar">A</div>
-                    </div>
                 </header>
 
                 <div className="content-area">
@@ -148,7 +130,6 @@ export default function ReviewsPage() {
                         </div>
                     </div>
                 </div>
-            </main>
-        </div>
+        </>
     );
 }

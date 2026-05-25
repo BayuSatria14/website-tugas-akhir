@@ -1,16 +1,37 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { CheckCircle } from 'lucide-react';
 
-export default function BookingSuccessPage() {
+function SuccessContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const [bookingData, setBookingData] = useState(null);
 
     useEffect(() => {
         const bookingId = searchParams.get('bookingId');
+
+        // Pemicu webhook simulasi lokal jika dalam development/localhost
+        const triggerLocalWebhook = async () => {
+            if (bookingId && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+                try {
+                    await fetch('/api/xendit-webhook', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            external_id: bookingId,
+                            status: 'PAID'
+                        })
+                    });
+                    console.log("Local webhook simulation triggered successfully.");
+                } catch (err) {
+                    console.error("Failed to trigger local webhook simulation:", err);
+                }
+            }
+        };
+
+        triggerLocalWebhook();
 
         // Ambil data dari localStorage
         const savedBooking = localStorage.getItem('currentBooking');
@@ -78,5 +99,17 @@ export default function BookingSuccessPage() {
                 </button>
             </div>
         </div>
+    );
+}
+
+export default function BookingSuccessPage() {
+    return (
+        <Suspense fallback={
+            <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <p>Loading...</p>
+            </div>
+        }>
+            <SuccessContent />
+        </Suspense>
     );
 }

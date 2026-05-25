@@ -7,7 +7,8 @@ import {
     LogOut, MessageSquare, UserCheck, TrendingUp, Loader2
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import './Dashboard.css';
+
+
 
 export default function DashboardPage() {
     const router = useRouter();
@@ -52,7 +53,7 @@ export default function DashboardPage() {
                 const { data: bookings, error: bookingError } = await supabase
                     .from('reservations')
                     .select(`
-                        id, external_id, created_at, check_in, check_out, payment_status, room_name, total_amount,
+                        id, external_id, created_at, check_in, check_out, payment_status, room_name, package_name, total_amount,
                         guests (first_name, last_name)
                     `)
                     .order('created_at', { ascending: false })
@@ -112,22 +113,7 @@ export default function DashboardPage() {
         checkAdminSession();
     }, [router]);
 
-    const handleLogout = async () => {
-        if (window.confirm("Apakah Anda yakin ingin keluar?")) {
-            await supabase.auth.signOut();
-            localStorage.removeItem("isAdminAuthenticated");
-            router.push("/admin");
-        }
-    };
 
-    const menuItems = [
-        { path: '/admin/dashboard', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
-        { path: '/admin/packages', icon: <Package size={20} />, label: 'Kelola Packages' },
-        { path: '/admin/guest-management', icon: <UserCheck size={20} />, label: 'Manajemen Tamu' },
-        { path: '/admin/reservations', icon: <CalendarCheck size={20} />, label: 'Reservasi' },
-        { path: '/admin/reviews', icon: <MessageSquare size={20} />, label: 'Ulasan' },
-        { path: '/admin/settings', icon: <Settings size={20} />, label: 'Pengaturan' }
-    ];
 
     const formatDate = (dateString) => {
         if (!dateString) return '-';
@@ -135,31 +121,66 @@ export default function DashboardPage() {
     };
 
     return (
-        <div className="admin-container">
-            <aside className="admin-sidebar">
-                <div className="sidebar-header">
-                    <div className="admin-logo">TD</div>
-                    <h3>Admin Panel</h3>
-                </div>
-                <nav className="sidebar-nav">
-                    {menuItems.map((item) => (
-                        <button
-                            key={item.path}
-                            className={`nav-item ${pathname === item.path ? 'active' : ''}`}
-                            onClick={() => router.push(item.path)}
-                        >
-                            {item.icon} {item.label}
-                        </button>
-                    ))}
-                </nav>
-                <div className="sidebar-footer">
-                    <button className="logout-btn" onClick={handleLogout}>
-                        <LogOut size={20} /> Keluar
-                    </button>
-                </div>
-            </aside>
-
-            <main className="admin-main">
+        <>
+            <style jsx>{`
+                .stats-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+                    gap: 24px;
+                    margin-bottom: 40px;
+                }
+                .stat-card {
+                    background: white;
+                    padding: 24px;
+                    border-radius: 16px;
+                    display: flex;
+                    align-items: center;
+                    gap: 20px;
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+                    border: 1px solid rgba(0,0,0,0.04);
+                    transition: transform 0.3s, box-shadow 0.3s;
+                }
+                .stat-card:hover {
+                    transform: translateY(-4px);
+                    box-shadow: 0 12px 30px rgba(0,0,0,0.06);
+                }
+                .stat-icon {
+                    width: 56px;
+                    height: 56px;
+                    border-radius: 12px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+                .stat-label {
+                    color: #6B6B6B;
+                    font-size: 13px;
+                    font-weight: 600;
+                    margin-bottom: 4px;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                }
+                .stat-value {
+                    color: #1A1A1A;
+                    font-size: 24px;
+                    font-weight: 700;
+                    font-family: 'Playfair Display', serif;
+                    margin: 0;
+                }
+                .recent-activity h3 {
+                    font-family: 'Playfair Display', serif;
+                    font-size: 20px;
+                    margin-bottom: 20px;
+                    color: #1A1A1A;
+                }
+                .recent-activity {
+                    background: white;
+                    padding: 32px;
+                    border-radius: 16px;
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+                    border: 1px solid rgba(0,0,0,0.04);
+                }
+            `}</style>
                 <header className="main-header">
                     <h2>Dashboard</h2>
                     <div className="user-info">
@@ -196,7 +217,9 @@ export default function DashboardPage() {
                                         <tr>
                                             <th>Nama Tamu</th>
                                             <th>Paket</th>
-                                            <th>Checkin</th>
+                                            <th>Kamar</th>
+                                            <th>Check In</th>
+                                            <th>Check Out</th>
                                             <th>Status</th>
                                         </tr>
                                     </thead>
@@ -204,8 +227,10 @@ export default function DashboardPage() {
                                         {recentBookings.map(b => (
                                             <tr key={b.id}>
                                                 <td>{b.guests?.first_name} {b.guests?.last_name}</td>
+                                                <td>{b.package_name || '-'}</td>
                                                 <td>{b.room_name}</td>
-                                                <td>{formatDate(b.check_in)} - {formatDate(b.check_out)}</td>
+                                                <td>{formatDate(b.check_in)}</td>
+                                                <td>{formatDate(b.check_out)}</td>
                                                 <td>
                                                     <span className={`badge ${b.payment_status ? b.payment_status.toLowerCase() : 'pending'}`}>
                                                         {b.payment_status || 'PENDING'}
@@ -214,7 +239,7 @@ export default function DashboardPage() {
                                             </tr>
                                         ))}
                                         {!isLoading && recentBookings.length === 0 && (
-                                            <tr><td colSpan="4" className="text-center p-4">Belum ada reservasi.</td></tr>
+                                            <tr><td colSpan="6" className="text-center p-4">Belum ada reservasi.</td></tr>
                                         )}
                                     </tbody>
                                 </table>
@@ -222,7 +247,6 @@ export default function DashboardPage() {
                         </div>
                     </div>
                 </div>
-            </main>
-        </div>
+        </>
     );
 }

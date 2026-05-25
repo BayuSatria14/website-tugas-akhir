@@ -7,8 +7,7 @@ import {
     LayoutDashboard, Package, CalendarCheck, Settings,
     LogOut, MessageSquare, UserCheck, Plus, Edit, Trash2, ArrowLeft, Save, Eye
 } from 'lucide-react';
-import '../dashboard/Dashboard.css';
-import './Packages.css';
+
 
 export default function PackagesPage() {
     const router = useRouter();
@@ -156,35 +155,182 @@ export default function PackagesPage() {
         }
     };
 
-    const menuItems = [
-        { path: '/admin/dashboard', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
-        { path: '/admin/packages', icon: <Package size={20} />, label: 'Kelola Packages' },
-        { path: '/admin/guest-management', icon: <UserCheck size={20} />, label: 'Manajemen Tamu' },
-        { path: '/admin/reservations', icon: <CalendarCheck size={20} />, label: 'Reservasi' },
-        { path: '/admin/reviews', icon: <MessageSquare size={20} />, label: 'Ulasan' },
-        { path: '/admin/settings', icon: <Settings size={20} />, label: 'Pengaturan' }
-    ];
-
     return (
-        <div className="admin-container">
-            <aside className="admin-sidebar">
-                <div className="sidebar-header">
-                    <div className="admin-logo">TD</div>
-                    <h3>Admin Panel</h3>
-                </div>
-                <nav className="sidebar-nav">
-                    {menuItems.map((item) => (
-                        <button key={item.path} className={`nav-item ${pathname === item.path ? 'active' : ''}`} onClick={() => router.push(item.path)}>
-                            {item.icon} {item.label}
-                        </button>
-                    ))}
-                </nav>
-                <div className="sidebar-footer">
-                    <button className="logout-btn" onClick={() => router.push("/admin")}><LogOut size={20} /> Keluar</button>
-                </div>
-            </aside>
-
-            <main className="admin-main">
+        <>
+            <style jsx>{`
+                .packages-container { padding: 20px; }
+                
+                .package-form-container {
+                    background: white;
+                    padding: 32px 40px;
+                    border-radius: 16px;
+                    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+                    border: 1px solid rgba(0,0,0,0.04);
+                    max-width: 800px;
+                    margin: 0 auto;
+                }
+                
+                .form-grid {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 24px;
+                    margin-bottom: 24px;
+                }
+                
+                .form-group {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                }
+                
+                .form-group.full-width { grid-column: span 2; }
+                
+                .form-group label {
+                    font-weight: 600;
+                    color: #1A1A1A;
+                    font-size: 13px;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                }
+                
+                .form-group input, .form-group textarea, .form-group select {
+                    padding: 14px;
+                    border: 1px solid #E8E5E0;
+                    border-radius: 10px;
+                    font-size: 14px;
+                    outline: none;
+                    transition: border-color 0.3s, box-shadow 0.3s;
+                    font-family: 'Inter', sans-serif;
+                }
+                
+                .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
+                    border-color: #8B7355;
+                    box-shadow: 0 0 0 3px rgba(139,115,85, 0.1);
+                }
+                
+                .file-input-custom {
+                    padding: 12px;
+                    background: #FAFAF7;
+                    border: 2px dashed #E8E5E0;
+                    cursor: pointer;
+                    border-radius: 10px;
+                    text-align: center;
+                    transition: border-color 0.3s;
+                }
+                
+                .file-input-custom:hover {
+                    border-color: #8B7355;
+                }
+                
+                .duration-inputs { display: flex; align-items: center; gap: 12px; }
+                .duration-field { width: 80px !important; text-align: center; }
+                .duration-label { font-size: 14px; color: #6B6B6B; font-weight: 500; }
+                
+                .preview-box {
+                    width: 100%; height: 200px;
+                    border-radius: 12px; border: 1px solid #E8E5E0;
+                    display: flex; align-items: center; justify-content: center;
+                    overflow: hidden; background: #FAFAF7; margin-top: 12px;
+                }
+                
+                .preview-img { width: 100%; height: 100%; object-fit: cover; }
+                
+                .form-actions { display: flex; gap: 16px; justify-content: flex-end; margin-top: 32px; }
+                
+                .btn-primary {
+                    background: #1A1A1A; color: white; border: none;
+                    padding: 14px 28px; border-radius: 10px; cursor: pointer;
+                    font-weight: 600; display: flex; align-items: center;
+                    font-family: 'Inter', sans-serif; letter-spacing: 0.5px;
+                    transition: background 0.3s, transform 0.2s;
+                }
+                
+                .btn-primary:hover { background: #8B7355; transform: translateY(-2px); }
+                
+                .btn-secondary {
+                    background: #FAFAF7; color: #1A1A1A; border: 1px solid #E8E5E0;
+                    padding: 14px 28px; border-radius: 10px; cursor: pointer;
+                    font-weight: 600; font-family: 'Inter', sans-serif; transition: all 0.3s;
+                }
+                
+                .btn-secondary:hover { background: #E8E5E0; }
+                
+                .btn-back {
+                    background: none; border: none; padding: 0; margin-bottom: 24px;
+                    display: flex; align-items: center; gap: 8px; color: #6B6B6B;
+                    cursor: pointer; font-size: 14px; font-weight: 600; text-transform: uppercase;
+                    transition: color 0.3s;
+                }
+                
+                .btn-back:hover { color: #8B7355; }
+                
+                .itinerary-section {
+                    margin-top: 24px; padding: 24px; background: #FAFAF7;
+                    border-radius: 12px; border: 1px solid #E8E5E0;
+                }
+                
+                .itinerary-day-item {
+                    background: white; padding: 20px; border-radius: 10px;
+                    margin-bottom: 16px; border-left: 4px solid #8B7355;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+                }
+                
+                .itinerary-day-item h4 { margin-bottom: 12px; color: #1A1A1A; font-size: 15px; font-weight: 600; }
+                .itinerary-day-item textarea { width: 100%; min-height: 80px; padding: 12px; border: 1px solid #E8E5E0; border-radius: 8px; resize: vertical; }
+                .helper-text { font-size: 12px; color: #6B6B6B; margin-bottom: 16px; font-style: italic; }
+                
+                .package-detail-container {
+                    background: white; padding: 40px; border-radius: 16px;
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.04);
+                    max-width: 900px; margin: 0 auto;
+                }
+                
+                .detail-header { display: flex; gap: 32px; margin-bottom: 32px; padding-bottom: 24px; border-bottom: 1px solid #E8E5E0; }
+                .detail-image-wrapper { width: 320px; height: 220px; border-radius: 12px; overflow: hidden; flex-shrink: 0; }
+                .detail-info h3 { font-family: 'Playfair Display', serif; font-size: 28px; color: #1A1A1A; margin-bottom: 12px; }
+                .detail-price { font-size: 22px; font-weight: 700; color: #8B7355; margin-bottom: 16px; }
+                
+                .detail-section { margin-bottom: 32px; }
+                .detail-section h4 {
+                    color: #1A1A1A; border-left: 4px solid #8B7355; padding-left: 12px;
+                    margin-bottom: 16px; font-size: 16px; font-weight: 600; text-transform: uppercase;
+                }
+                .detail-section p { line-height: 1.8; color: #6B6B6B; font-size: 15px; }
+                
+                .features-list { display: flex; flex-wrap: wrap; gap: 12px; }
+                .feature-tag {
+                    background: transparent; color: #8B7355; padding: 6px 14px;
+                    border-radius: 6px; font-size: 13px; font-weight: 600;
+                    border: 1px solid rgba(139,115,85, 0.2); text-transform: uppercase;
+                }
+                
+                .view-itinerary-grid { display: grid; gap: 16px; }
+                .view-itinerary-item { background: #FAFAF7; padding: 20px; border-radius: 10px; border: 1px solid #E8E5E0; }
+                .view-itinerary-item b { display: block; margin-bottom: 8px; color: #1A1A1A; font-weight: 600; }
+                
+                .packages-overview-section { background: white; border-radius: 16px; padding: 32px; border: 1px solid rgba(0,0,0,0.04); box-shadow: 0 4px 20px rgba(0,0,0,0.03); }
+                .action-btns { display: flex; gap: 8px; }
+                .action-btns button {
+                    background: #FAFAF7; border: 1px solid #E8E5E0; padding: 8px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.3s;
+                }
+                .view-btn { color: #8B7355; }
+                .view-btn:hover { background: #8B7355; color: white; }
+                .edit-btn { color: #8B7355; }
+                .edit-btn:hover { background: #8B7355; color: white; }
+                .delete-btn { color: #EF4444; }
+                .delete-btn:hover { background: #EF4444; color: white; border-color: #EF4444; }
+                .badge.success { background: #D1FAE5; color: #059669; }
+                .badge.danger { background: #FEE2E2; color: #DC2626; }
+                
+                .section-header-with-button { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+                .section-header-with-button h3 { font-family: 'Playfair Display', serif; font-size: 20px; color: #1A1A1A; margin: 0; }
+                .add-btn {
+                    background: #1A1A1A; color: white; border: none; padding: 12px 20px;
+                    border-radius: 8px; cursor: pointer; font-weight: 600; font-family: 'Inter', sans-serif;
+                    display: flex; align-items: center; gap: 8px; transition: background 0.3s;
+                }
+                .add-btn:hover { background: #8B7355; }
+            `}</style>
                 <header className="main-header">
                     <h2>{view === 'list' ? 'Kelola Packages' : view === 'detail' ? 'Detail Package' : 'Form Package'}</h2>
                 </header>
@@ -350,7 +496,6 @@ export default function PackagesPage() {
                         </div>
                     )}
                 </div>
-            </main>
-        </div>
+        </>
     );
 }

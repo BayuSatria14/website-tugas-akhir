@@ -6,8 +6,7 @@ import {
     LayoutDashboard, Package, CalendarCheck, Users, Settings,
     LogOut, MessageSquare, UserCheck, Save, User, Bell, Lock, Shield, Loader2
 } from 'lucide-react';
-import { supabase } from '@/lib/supabase'; // Pastikan path import benar sesuai struktur proyek Anda
-import '../dashboard/Dashboard.css';
+import { supabase } from '@/lib/supabase';
 
 export default function SettingsPage() {
     const router = useRouter();
@@ -45,30 +44,7 @@ export default function SettingsPage() {
         getProfile();
     }, []);
 
-    // ==========================================
-    // 1. FUNGSI LOGOUT (MENGGUNAKAN SUPABASE)
-    // ==========================================
-    const handleLogout = async () => {
-        if (window.confirm("Apakah Anda yakin ingin keluar?")) {
-            const { error } = await supabase.auth.signOut();
-            if (error) {
-                alert("Error logout: " + error.message);
-            } else {
-                // Bersihkan localStorage lama jika masih tersisa
-                localStorage.removeItem("isAdminAuthenticated");
-                router.push("/admin");
-            }
-        }
-    };
 
-    const menuItems = [
-        { path: '/admin/dashboard', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
-        { path: '/admin/packages', icon: <Package size={20} />, label: 'Kelola Packages' },
-        { path: '/admin/guest-management', icon: <UserCheck size={20} />, label: 'Manajemen Tamu' },
-        { path: '/admin/reservations', icon: <CalendarCheck size={20} />, label: 'Reservasi' },
-        { path: '/admin/reviews', icon: <MessageSquare size={20} />, label: 'Ulasan' },
-        { path: '/admin/settings', icon: <Settings size={20} />, label: 'Pengaturan' }
-    ];
 
     // ==========================================
     // FUNGSI SIMPAN PERUBAHAN KE DATABASE
@@ -96,31 +72,35 @@ export default function SettingsPage() {
     };
 
     return (
-        <div className="admin-container">
-            <aside className="admin-sidebar">
-                <div className="sidebar-header">
-                    <div className="admin-logo">TD</div>
-                    <h3>Admin Panel</h3>
-                </div>
-                <nav className="sidebar-nav">
-                    {menuItems.map((item) => (
-                        <button
-                            key={item.path}
-                            className={`nav-item ${pathname === item.path ? 'active' : ''}`}
-                            onClick={() => router.push(item.path)}
-                        >
-                            {item.icon} {item.label}
-                        </button>
-                    ))}
-                </nav>
-                <div className="sidebar-footer">
-                    <button className="logout-btn" onClick={handleLogout}>
-                        <LogOut size={20} /> Keluar
-                    </button>
-                </div>
-            </aside>
-
-            <main className="admin-main">
+        <>
+            <style jsx>{`
+                .settings-grid { display: grid; gap: 24px; }
+                .stat-card {
+                    background: white; border-radius: 16px; padding: 32px;
+                    border: 1px solid rgba(0,0,0,0.04); box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+                }
+                .stat-card h3 { font-family: 'Playfair Display', serif; font-size: 20px; color: #1A1A1A; }
+                .input-field {
+                    width: 100%; padding: 14px; border-radius: 10px; border: 1px solid #E8E5E0;
+                    font-size: 14px; font-family: 'Inter', sans-serif; transition: border-color 0.3s;
+                }
+                .input-field:focus { border-color: #8B7355; outline: none; }
+                .input-field.readonly { background-color: #FAFAF7; color: #6B6B6B; cursor: not-allowed; }
+                .form-label { display: block; margin-bottom: 8px; font-size: 13px; color: #1A1A1A; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+                .btn-save {
+                    background-color: #1A1A1A; color: white; padding: 14px 28px; border: none;
+                    border-radius: 10px; font-weight: 600; font-family: 'Inter', sans-serif; cursor: pointer;
+                    display: flex; alignItems: center; gap: 8px; transition: background 0.3s, transform 0.2s;
+                }
+                .btn-save:hover:not(:disabled) { background-color: #8B7355; transform: translateY(-2px); }
+                .btn-save:disabled { background-color: #E8E5E0; color: #6B6B6B; cursor: not-allowed; }
+                .view-btn {
+                    background: #FAFAF7; color: #8B7355; border: 1px solid #E8E5E0;
+                    padding: 10px 20px; border-radius: 10px; cursor: pointer; font-weight: 600;
+                    display: flex; align-items: center; gap: 8px; transition: all 0.3s;
+                }
+                .view-btn:hover { background: #8B7355; color: white; }
+            `}</style>
                 <header className="main-header">
                     <h2>Pengaturan Sistem</h2>
                     <div className="user-info">
@@ -134,45 +114,44 @@ export default function SettingsPage() {
                     <div className="settings-grid" style={{ display: 'grid', gap: '24px' }}>
 
                         {/* SEKSI PROFIL */}
-                        <div className="stat-card" style={{ padding: '24px', display: 'block' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
-                                <User size={24} style={{ color: '#4f46e5' }} />
+                        <div className="stat-card">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
+                                <User size={24} style={{ color: '#8B7355' }} />
                                 <h3 style={{ margin: 0 }}>Profil Administrator</h3>
                             </div>
-                            <div style={{ display: 'grid', gap: '16px' }}>
+                            <div style={{ display: 'grid', gap: '20px' }}>
                                 <div>
-                                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: '#64748b' }}>Nama Admin</label>
+                                    <label className="form-label">Nama Admin</label>
                                     <input
                                         type="text"
                                         value={adminName}
                                         onChange={(e) => setAdminName(e.target.value)}
-                                        style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #e2e8f0' }}
+                                        className="input-field"
                                     />
                                 </div>
                                 <div>
-                                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: '#64748b' }}>Email Kontak</label>
+                                    <label className="form-label">Email Kontak</label>
                                     <input
                                         type="email"
                                         value={adminEmail}
                                         readOnly
-                                        style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', color: '#64748b', cursor: 'not-allowed' }}
+                                        className="input-field readonly"
                                     />
                                 </div>
                             </div>
                         </div>
 
                         {/* SEKSI KEAMANAN */}
-                        <div className="stat-card" style={{ padding: '24px', display: 'block' }}>
+                        <div className="stat-card">
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
-                                <Shield size={24} style={{ color: '#ef4444' }} />
+                                <Shield size={24} style={{ color: '#EF4444' }} />
                                 <h3 style={{ margin: 0 }}>Keamanan & Autentikasi</h3>
                             </div>
-                            <p style={{ fontSize: '14px', color: '#64748b', marginBottom: '16px' }}>
+                            <p style={{ fontSize: '14px', color: '#6B6B6B', marginBottom: '20px', lineHeight: '1.6' }}>
                                 Keamanan akun Anda dikelola melalui Supabase Auth.
                             </p>
                             <button
                                 className="view-btn"
-                                style={{ display: 'flex', alignItems: 'center', gap: '8px', width: 'fit-content', padding: '10px 20px' }}
                                 onClick={() => alert("Gunakan fitur Reset Password pada menu Supabase Auth jika diperlukan.")}
                             >
                                 <Lock size={18} /> Ganti Kata Sandi
@@ -180,34 +159,23 @@ export default function SettingsPage() {
                         </div>
 
                         {/* SEKSI NOTIFIKASI */}
-                        <div className="stat-card" style={{ padding: '24px', display: 'block' }}>
+                        <div className="stat-card">
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
-                                <Bell size={24} style={{ color: '#f59e0b' }} />
+                                <Bell size={24} style={{ color: '#8B7355' }} />
                                 <h3 style={{ margin: 0 }}>Notifikasi Sistem</h3>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <input type="checkbox" defaultChecked style={{ width: '20px', height: '20px' }} />
-                                <span style={{ fontSize: '14px' }}>Aktifkan notifikasi email untuk setiap reservasi baru</span>
+                                <input type="checkbox" defaultChecked style={{ width: '18px', height: '18px', accentColor: '#8B7355' }} />
+                                <span style={{ fontSize: '14px', color: '#1A1A1A' }}>Aktifkan notifikasi email untuk setiap reservasi baru</span>
                             </div>
                         </div>
 
                         {/* TOMBOL SIMPAN */}
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
                             <button
                                 onClick={handleSaveSettings}
                                 disabled={isLoading}
-                                style={{
-                                    backgroundColor: '#4f46e5',
-                                    color: 'white',
-                                    padding: '12px 24px',
-                                    border: 'none',
-                                    borderRadius: '8px',
-                                    fontWeight: '600',
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '8px'
-                                }}
+                                className="btn-save"
                             >
                                 {isLoading ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />}
                                 {isLoading ? "Menyimpan..." : "Simpan Pengaturan"}
@@ -215,7 +183,6 @@ export default function SettingsPage() {
                         </div>
                     </div>
                 </div>
-            </main>
-        </div>
+        </>
     );
 }

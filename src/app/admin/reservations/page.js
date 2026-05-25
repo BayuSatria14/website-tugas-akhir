@@ -7,7 +7,6 @@ import {
     LogOut, MessageSquare, UserCheck, Eye, Loader2
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import '../dashboard/Dashboard.css';
 
 export default function ReservationsPage() {
     const router = useRouter();
@@ -22,12 +21,15 @@ export default function ReservationsPage() {
     const fetchReservations = async () => {
         try {
             setIsLoading(true);
+            const today = new Date().toISOString().split('T')[0];
+
             const { data, error } = await supabase
                 .from('reservations')
                 .select(`
                         *,
                         guests (first_name, last_name, email, phone)
                     `)
+                .gte('check_out', today)
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
@@ -48,25 +50,7 @@ export default function ReservationsPage() {
         fetchReservations();
     }, [router]);
 
-    // ==========================================
-    // 3. FUNGSI LOGOUT (MENGGUNAKAN SUPABASE)
-    // ==========================================
-    const handleLogout = async () => {
-        if (window.confirm("Apakah Anda yakin ingin keluar?")) {
-            await supabase.auth.signOut();
-            localStorage.removeItem("isAdminAuthenticated"); // Bersihkan sisa-sisa lama
-            router.push("/admin");
-        }
-    };
 
-    const menuItems = [
-        { path: '/admin/dashboard', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
-        { path: '/admin/packages', icon: <Package size={20} />, label: 'Kelola Packages' },
-        { path: '/admin/guest-management', icon: <UserCheck size={20} />, label: 'Manajemen Tamu' },
-        { path: '/admin/reservations', icon: <CalendarCheck size={20} />, label: 'Reservasi' },
-        { path: '/admin/reviews', icon: <MessageSquare size={20} />, label: 'Ulasan' },
-        { path: '/admin/settings', icon: <Settings size={20} />, label: 'Pengaturan' }
-    ];
 
     const formatDate = (dateString) => {
         if (!dateString) return '-';
@@ -74,88 +58,71 @@ export default function ReservationsPage() {
     };
 
     return (
-        <div className="admin-container">
-            <aside className="admin-sidebar">
-                <div className="sidebar-header">
-                    <div className="admin-logo">TD</div>
-                    <h3>Admin Panel</h3>
-                </div>
-                <nav className="sidebar-nav">
-                    {menuItems.map((item) => (
-                        <button
-                            key={item.path}
-                            className={`nav-item ${pathname === item.path ? 'active' : ''}`}
-                            onClick={() => router.push(item.path)}
-                        >
-                            {item.icon} {item.label}
-                        </button>
-                    ))}
-                </nav>
-                <div className="sidebar-footer">
-                    <button className="logout-btn" onClick={handleLogout}>
-                        <LogOut size={20} /> Keluar
-                    </button>
-                </div>
-            </aside>
+        <>
+            <style jsx>{`
+                .loading-state { padding: 40px; text-align: center; color: #6B6B6B; display: flex; align-items: center; justify-content: center; gap: 12px; }
+                .view-btn {
+                    background: #FAFAF7; color: #8B7355; border: 1px solid #E8E5E0;
+                    padding: 8px; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+                    transition: all 0.3s;
+                }
+                .view-btn:hover { background: #8B7355; color: white; }
+            `}</style>
 
-            <main className="admin-main">
-                <header className="main-header">
-                    <h2>Daftar Reservasi</h2>
-                    <div className="user-info">
-                        <span>Halo, Admin</span>
-                        <div className="user-avatar">A</div>
-                    </div>
-                </header>
+            <header className="main-header">
+                <h2>Daftar Reservasi</h2>
+            </header>
 
-                <div className="content-area">
-                    <div className="admin-table-container">
-                        {isLoading ? (
-                            <div className="loading-state">
-                                <Loader2 className="animate-spin" /> Mengambil data...
-                            </div>
-                        ) : (
-                            <table className="admin-table">
-                                <thead>
-                                    <tr>
-                                        <th>Booking ID</th>
-                                        <th>Nama Tamu</th>
-                                        <th>Kamar / Unit</th>
-                                        <th>Status</th>
-                                        <th>Aksi</th>
+            <div className="content-area">
+                <div className="admin-table-container">
+                    {isLoading ? (
+                        <div className="loading-state">
+                            <Loader2 className="animate-spin" /> Mengambil data...
+                        </div>
+                    ) : (
+                        <table className="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Booking ID</th>
+                                    <th>Nama Tamu</th>
+                                    <th>Paket</th>
+                                    <th>Kamar</th>
+                                    <th>Status</th>
+                                    <th>Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {reservations.map((res) => (
+                                    <tr key={res.id}>
+                                        <td><strong>{res.external_id}</strong></td>
+                                        <td>{res.guests?.first_name} {res.guests?.last_name}</td>
+                                        <td>{res.package_name || '-'}</td>
+                                        <td>{res.room_name}</td>
+                                        <td>
+                                            <span className={`badge ${res.payment_status?.toLowerCase() || 'pending'}`}>
+                                                {res.payment_status || 'PENDING'}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <button
+                                                className="view-btn"
+                                                onClick={() => router.push(`/admin/guest-detail/${res.external_id}`)}
+                                            >
+                                                <Eye size={18} />
+                                            </button>
+                                        </td>
                                     </tr>
-                                </thead>
-                                <tbody>
-                                    {reservations.map((res) => (
-                                        <tr key={res.id}>
-                                            <td><strong>{res.external_id}</strong></td>
-                                            <td>{res.guests?.first_name} {res.guests?.last_name}</td>
-                                            <td>{res.room_name}</td>
-                                            <td>
-                                                <span className={`status-badge ${res.payment_status?.toLowerCase() || 'pending'}`}>
-                                                    {res.payment_status || 'PENDING'}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <button
-                                                    className="view-btn"
-                                                    onClick={() => router.push(`/admin/guest-detail/${res.external_id}`)}
-                                                >
-                                                    <Eye size={18} />
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                    {reservations.length === 0 && (
-                                        <tr>
-                                            <td colSpan="5" style={{ textAlign: 'center', padding: '20px' }}>Tidak ada data reservasi.</td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        )}
-                    </div>
+                                ))}
+                                {reservations.length === 0 && (
+                                    <tr>
+                                        <td colSpan="6" style={{ textAlign: 'center', padding: '20px' }}>Tidak ada data reservasi.</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    )}
                 </div>
-            </main>
-        </div>
+            </div>
+        </>
     );
 }

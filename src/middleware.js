@@ -21,16 +21,14 @@ export async function middleware(req) {
         }
     );
 
-    // Ambil user secara aman
     const { data: { user } } = await supabase.auth.getUser();
     const url = req.nextUrl.pathname;
 
     const isAdminArea = url.startsWith('/admin');
     const isAdminLoginPage = url === '/admin';
-    const isUserProtectedArea = url.startsWith('/home') || url.startsWith('/booking-page');
-    const isLoginPage = url === '/login' || url === '/register';
 
-    // 1. Proteksi Area Admin
+    // 1. TETAP PROTEKSI AREA ADMIN (Opsional)
+    // Jika Anda ingin menghapus total semua proteksi, hapus blok 'if (isAdminArea)' ini.
     if (isAdminArea) {
         if (!user && !isAdminLoginPage) {
             return NextResponse.redirect(new URL('/admin', req.url));
@@ -50,29 +48,20 @@ export async function middleware(req) {
             }
 
             if (!isAdmin && !isAdminLoginPage) {
-                return NextResponse.redirect(new URL('/home', req.url));
+                // Dialihkan ke homepage jika bukan admin
+                return NextResponse.redirect(new URL('/', req.url));
             }
         }
     }
 
-    // 2. Proteksi Area User
-    if (isUserProtectedArea && !user) {
-        return NextResponse.redirect(new URL('/login', req.url));
-    }
-
-    // 3. Redireksi Jika Sudah Login
-    if (isLoginPage && user) {
-        return NextResponse.redirect(new URL('/home', req.url));
-    }
+    // 2. PROTEKSI AREA USER DIHAPUS
+    // Bagian 'isUserProtectedArea' dan 'isLoginPage' dibuang agar user bebas masuk.
 
     return res;
 }
 
 export const config = {
     matcher: [
-        /*
-         * Filter agar middleware TIDAK mengecek file statis/gambar
-         */
         '/((?!api|_next/static|_next/image|favicon.ico|.*\\.jpg|.*\\.png|.*\\.svg|.*\\.css|.*\\.js).*)',
     ],
 };

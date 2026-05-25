@@ -6,8 +6,6 @@ import {
     LogOut, MessageSquare, UserCheck, Loader2, Send, User, ChevronRight, ArrowLeft
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-// Menggunakan Dashboard.css untuk layout utama (Sidebar & Header)
-import '../dashboard/Dashboard.css';
 
 export default function GuestManagementPage() {
     const router = useRouter();
@@ -24,13 +22,18 @@ export default function GuestManagementPage() {
     const fetchPackageGuests = async () => {
         setIsLoading(true);
         try {
-            // Ambil hanya yang booking paket (package_name not null) dan status CONFIRMED atau PAID
+            // Format hari ini untuk perbandingan filter otomatis
+            const today = new Date().toISOString().split('T')[0];
+
+            // Ambil hanya yang booking paket (package_name not null), status CONFIRMED/PAID
+            // dan check_out >= hari ini (otomatis menghapus/menyembunyikan data masa lalu)
             const { data, error } = await supabase
                 .from('reservations')
                 .select('*, guests(*)')
                 .not('package_name', 'is', null)
+                .gte('check_out', today)
                 .or('payment_status.eq.CONFIRMED,payment_status.eq.PAID')
-                .order('created_at', { ascending: false });
+                .order('check_in', { ascending: true });
 
             if (error) throw error;
             setPackageGuests(data || []);
@@ -39,6 +42,11 @@ export default function GuestManagementPage() {
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const formatDate = (dateString) => {
+        if (!dateString) return '-';
+        return new Date(dateString).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
     };
 
     // FUNGSI YANG BARU ANDA BERIKAN (SUDAH TERINTEGRASI)
@@ -95,76 +103,51 @@ export default function GuestManagementPage() {
         }
     };
 
-    const menuItems = [
-        { path: '/admin/dashboard', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
-        { path: '/admin/packages', icon: <Package size={20} />, label: 'Kelola Packages' },
-        { path: '/admin/guest-management', icon: <UserCheck size={20} />, label: 'Manajemen Tamu' },
-        { path: '/admin/reservations', icon: <CalendarCheck size={20} />, label: 'Reservasi' },
-        { path: '/admin/reviews', icon: <MessageSquare size={20} />, label: 'Ulasan' },
-        { path: '/admin/settings', icon: <Settings size={20} />, label: 'Pengaturan' }
-    ];
-
     return (
-        <div className="admin-container">
+        <>
             <style jsx>{`
-                .guest-list-container { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; }
+                .guest-list-container { display: flex; flex-direction: column; gap: 16px; margin-top: 24px; }
                 .guest-item-card {
-                    background: white; border-radius: 12px; padding: 16px 20px;
+                    background: white; border-radius: 12px; padding: 20px 24px;
                     display: flex; justify-content: space-between; align-items: center;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.04); border: 1px solid #f0f0f0;
-                    cursor: pointer; transition: all 0.2s ease;
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.04);
+                    cursor: pointer; transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s;
                 }
-                .guest-item-card:hover { border-color: #4f46e5; background-color: #f9fafb; transform: translateX(4px); }
-                .guest-item-info { display: flex; align-items: center; gap: 15px; }
+                .guest-item-card:hover { border-color: #8B7355; box-shadow: 0 12px 30px rgba(0,0,0,0.06); transform: translateY(-4px); }
+                .guest-item-info { display: flex; align-items: center; gap: 16px; }
                 .avatar-small {
-                    width: 40px; height: 40px; background: #4f46e510; color: #4f46e5;
+                    width: 48px; height: 48px; background: rgba(139,115,85,0.1); color: #8B7355;
                     border-radius: 50%; display: flex; align-items: center; justify-content: center;
                 }
-                .guest-text h4 { margin: 0; font-size: 15px; color: #1f2937; font-weight: 600; }
-                .guest-text p { margin: 2px 0 0; font-size: 12px; color: #6b7280; }
+                .guest-text h4 { margin: 0; font-size: 16px; color: #1A1A1A; font-weight: 600; font-family: 'Playfair Display', serif; }
+                .guest-text p { margin: 4px 0 0; font-size: 13px; color: #6B6B6B; }
                 .back-header {
-                    display: flex; align-items: center; gap: 8px; margin-bottom: 20px;
-                    cursor: pointer; color: #4f46e5; font-weight: 600; font-size: 14px;
+                    display: flex; align-items: center; gap: 8px; margin-bottom: 24px;
+                    cursor: pointer; color: #6B6B6B; font-weight: 600; font-size: 14px; text-transform: uppercase;
+                    transition: color 0.3s;
                 }
-                .detail-container { background: white; border-radius: 12px; padding: 24px; border: 1px solid #f0f0f0; }
-                .itin-input-group { margin-bottom: 15px; display: flex; flex-direction: column; gap: 6px; }
-                .itin-input-group span { font-size: 12px; font-weight: 700; color: #4f46e5; text-transform: uppercase; }
+                .back-header:hover { color: #8B7355; }
+                .detail-container { background: white; border-radius: 16px; padding: 32px; border: 1px solid rgba(0,0,0,0.04); box-shadow: 0 4px 20px rgba(0,0,0,0.03); }
+                .itin-input-group { margin-bottom: 20px; display: flex; flex-direction: column; gap: 8px; }
+                .itin-input-group span { font-size: 13px; font-weight: 600; color: #1A1A1A; text-transform: uppercase; letter-spacing: 0.5px; }
                 .itin-input-group textarea {
-                    width: 100%; min-height: 100px; padding: 12px; border: 1px solid #d1d5db;
-                    border-radius: 8px; font-size: 14px; resize: vertical; line-height: 1.5;
+                    width: 100%; min-height: 100px; padding: 14px; border: 1px solid #E8E5E0;
+                    border-radius: 10px; font-size: 14px; resize: vertical; line-height: 1.6;
+                    font-family: 'Inter', sans-serif; transition: border-color 0.3s; outline: none;
                 }
+                .itin-input-group textarea:focus { border-color: #8B7355; }
                 .save-send-btn {
-                    width: 100%; background: #4f46e5; color: white; border: none;
-                    padding: 14px; border-radius: 8px; font-weight: 600;
+                    width: 100%; background: #1A1A1A; color: white; border: none;
+                    padding: 16px; border-radius: 10px; font-weight: 600; letter-spacing: 0.5px;
                     display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer;
+                    transition: background 0.3s, transform 0.2s; font-family: 'Inter', sans-serif; margin-top: 24px;
                 }
-                .save-send-btn:disabled { background: #9ca3af; cursor: not-allowed; }
+                .save-send-btn:hover:not(:disabled) { background: #8B7355; transform: translateY(-2px); }
+                .save-send-btn:disabled { background: #E8E5E0; color: #6B6B6B; cursor: not-allowed; }
             `}</style>
 
-            <aside className="admin-sidebar">
-                <div className="sidebar-header">
-                    <div className="admin-logo">TD</div>
-                    <h3>Admin Panel</h3>
-                </div>
-                <nav className="sidebar-nav">
-                    {menuItems.map((item) => (
-                        <button key={item.path} className={`nav-item ${pathname === item.path ? 'active' : ''}`} onClick={() => router.push(item.path)}>
-                            {item.icon} {item.label}
-                        </button>
-                    ))}
-                </nav>
-                <div className="sidebar-footer">
-                    <button className="logout-btn" onClick={() => router.push("/admin")}><LogOut size={20} /> Keluar</button>
-                </div>
-            </aside>
-
-            <main className="admin-main">
                 <header className="main-header">
                     <h2>Manajemen Tamu</h2>
-                    <div className="user-info">
-                        <span>Halo, Admin</span>
-                        <div className="user-avatar">A</div>
-                    </div>
                 </header>
 
                 <div className="content-area">
@@ -181,7 +164,10 @@ export default function GuestManagementPage() {
                                     <div className="avatar-small" style={{ width: '48px', height: '48px' }}><User size={26} /></div>
                                     <div>
                                         <h3 style={{ margin: 0 }}>{selectedGuest.guests?.first_name} {selectedGuest.guests?.last_name}</h3>
-                                        <p style={{ margin: 0, color: '#6b7280' }}>{selectedGuest.package_name} • {selectedGuest.room_name}</p>
+                                        <p style={{ margin: '4px 0 0 0', color: '#6b7280' }}>{selectedGuest.package_name} • {selectedGuest.room_name}</p>
+                                        <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#8B7355', fontWeight: '600' }}>
+                                            {formatDate(selectedGuest.check_in)} - {formatDate(selectedGuest.check_out)}
+                                        </p>
                                     </div>
                                 </div>
                                 <div className="itinerary-edit-section">
@@ -217,6 +203,9 @@ export default function GuestManagementPage() {
                                         <div className="guest-text">
                                             <h4>{res.guests?.first_name} {res.guests?.last_name}</h4>
                                             <p>{res.package_name} • {res.room_name}</p>
+                                            <p style={{ marginTop: '4px', fontSize: '12px', color: '#8B7355', fontWeight: '600' }}>
+                                                {formatDate(res.check_in)} - {formatDate(res.check_out)}
+                                            </p>
                                         </div>
                                     </div>
                                     <ChevronRight size={20} color="#9ca3af" />
@@ -225,7 +214,6 @@ export default function GuestManagementPage() {
                         </div>
                     )}
                 </div>
-            </main>
-        </div>
+        </>
     );
 }

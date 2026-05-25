@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase';
 
 export async function POST(request) {
     try {
-        const XENDIT_API_KEY = process.env.XENDIT_SECRET_KEY;
+        const XENDIT_API_KEY = process.env.XENDIT_API_KEY || process.env.XENDIT_SECRET_KEY;
         const XENDIT_URL = 'https://api.xendit.co/v2/invoices';
         const body = await request.json();
         const { externalId, amount, payerEmail, guestInfo, packageName } = body;
@@ -71,11 +71,7 @@ export async function POST(request) {
         // 4. LOGIKA XENDIT / SIMULASI
         // ================================================================
         if (!XENDIT_API_KEY) {
-            return NextResponse.json({
-                success: true,
-                invoiceUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/payment-simulation?bookingId=${externalId}&amount=${amount}&paymentMethod=${body.paymentMethod}`,
-                invoiceId: `SIM-${Date.now()}`
-            });
+            throw new Error("Xendit API Key (XENDIT_API_KEY) is not configured in .env.local!");
         }
 
         const authHeader = Buffer.from(`${XENDIT_API_KEY}:`).toString('base64');
@@ -93,7 +89,7 @@ export async function POST(request) {
                 success_redirect_url: body.successRedirectUrl,
                 failure_redirect_url: body.failureRedirectUrl,
                 currency: 'IDR',
-                invoice_duration: 60 // Durasi invoice (misal 1 jam)
+                invoice_duration: 600
             })
         });
 

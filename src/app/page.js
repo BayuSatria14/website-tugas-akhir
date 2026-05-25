@@ -7,7 +7,7 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
-    router.push('/login');
+    router.push('/home');
   }, [router]);
 
   return (
@@ -28,7 +28,7 @@ export default function Home() {
           animation: 'spin 1s linear infinite',
           margin: '0 auto 20px'
         }}></div>
-        <p style={{ fontSize: '18px' }}>Redirecting to login...</p>
+        <p style={{ fontSize: '18px' }}>Loading...</p>
       </div>
       <style jsx>{`
         @keyframes spin {
