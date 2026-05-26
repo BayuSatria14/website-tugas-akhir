@@ -23,7 +23,8 @@ export default function GuestManagementPage() {
         setIsLoading(true);
         try {
             // Format hari ini untuk perbandingan filter otomatis
-            const today = new Date().toISOString().split('T')[0];
+            const d = new Date();
+            const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
             // Ambil hanya yang booking paket (package_name not null), status CONFIRMED/PAID
             // dan check_out >= hari ini (otomatis menghapus/menyembunyikan data masa lalu)

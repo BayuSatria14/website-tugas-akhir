@@ -10,7 +10,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import WhatsAppButton from "@/components/WhatsAppButton";
 
-function FadeInSection({ children }) {
+function FadeInSection({ children, className = "" }) {
     const [isVisible, setVisible] = useState(false);
     const domRef = useRef(null);
 
@@ -33,7 +33,7 @@ function FadeInSection({ children }) {
 
     return (
         <div
-            className={`fade-in-section ${isVisible ? 'is-visible' : ''}`}
+            className={`fade-in-section ${isVisible ? 'is-visible' : ''} ${className}`}
             ref={domRef}
         >
             {children}
@@ -56,6 +56,21 @@ export default function HomePage() {
     const [isLoading, setIsLoading] = useState(true);
     const [showFavoriteMessage, setShowFavoriteMessage] = useState(null);
     const [scrolled, setScrolled] = useState(false);
+
+    // Review States
+    const [publishedReviews, setPublishedReviews] = useState([]);
+    const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+    const [reviewForm, setReviewForm] = useState({ guestName: '', rating: 5, comment: '' });
+    const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+    const [submitReviewMessage, setSubmitReviewMessage] = useState(null);
+
+    const reviewsScrollRef = useRef(null);
+    const scrollReviews = (direction) => {
+        if (reviewsScrollRef.current) {
+            const scrollAmount = 300;
+            reviewsScrollRef.current.scrollBy({ left: direction === 'left' ? -scrollAmount : scrollAmount, behavior: 'smooth' });
+        }
+    };
 
     // Slideshow Images
     const slides = [
@@ -91,6 +106,23 @@ export default function HomePage() {
         { icon: <Sun size={20} />, text: "Peaceful Natural Setting" }
     ];
 
+    // 1a. Fungsi Fetch Ulasan yang di-publish
+    const fetchPublishedReviews = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('reviews')
+                .select('*')
+                .eq('status', 'Published')
+                .order('created_at', { ascending: false });
+
+            if (!error && data) {
+                setPublishedReviews(data);
+            }
+        } catch (err) {
+            console.error("Error fetching published reviews:", err);
+        }
+    };
+
     // 1. Ambil Data Paket & Hitung Best Seller dari Supabase
     useEffect(() => {
         const fetchData = async () => {
@@ -120,6 +152,9 @@ export default function HomePage() {
                     }
                 }
                 setPackages(pkgData || []);
+
+                // Ambil data ulasan awal
+                await fetchPublishedReviews();
             } catch (err) {
                 console.error("Error fetching home data:", err);
             } finally {
@@ -128,7 +163,59 @@ export default function HomePage() {
         };
 
         fetchData();
+
+        // Subscribe ke perubahan realtime tabel reviews
+        const channel = supabase
+            .channel('realtime_reviews')
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'reviews' },
+                () => {
+                    fetchPublishedReviews();
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, []);
+
+    // 1b. Handle Submit Review
+    const handleReviewSubmit = async (e) => {
+        e.preventDefault();
+        if (!reviewForm.guestName || !reviewForm.comment) {
+            setSubmitReviewMessage({ type: 'error', text: 'Nama dan komentar harus diisi.' });
+            return;
+        }
+        setIsSubmittingReview(true);
+        setSubmitReviewMessage(null);
+        try {
+            const { error } = await supabase
+                .from('reviews')
+                .insert([{
+                    guestName: reviewForm.guestName,
+                    rating: reviewForm.rating,
+                    comment: reviewForm.comment,
+                    date: new Date().toISOString(),
+                    status: 'Hidden'
+                }]);
+
+            if (error) throw error;
+
+            setSubmitReviewMessage({ type: 'success', text: 'Ulasan berhasil dikirim, Terimakasih atas feedbacknya!' });
+            setReviewForm({ guestName: '', rating: 5, comment: '' });
+            setTimeout(() => {
+                setIsReviewModalOpen(false);
+                setSubmitReviewMessage(null);
+            }, 3000);
+        } catch (err) {
+            console.error("Error submitting review:", err);
+            setSubmitReviewMessage({ type: 'error', text: 'Terjadi kesalahan saat mengirim ulasan.' });
+        } finally {
+            setIsSubmittingReview(false);
+        }
+    };
 
     // 2. Fungsi Scroll Horizontal (fallback for small screens)
     const scroll = (direction) => {
@@ -174,6 +261,11 @@ export default function HomePage() {
         cardBg: '#FFFFFF',
     };
 
+    // Hitung rata-rata rating dari ulasan yang di-publish
+    const averageRating = publishedReviews.length > 0
+        ? (publishedReviews.reduce((sum, r) => sum + r.rating, 0) / publishedReviews.length).toFixed(1)
+        : "4.8";
+
     return (
         <div style={{ minHeight: '100vh', background: colors.bg, color: colors.text }}>
 
@@ -209,6 +301,72 @@ export default function HomePage() {
                 @keyframes slideIn {
                     from { opacity: 0; transform: translateY(20px); }
                     to { opacity: 1; transform: translateY(0); }
+                }
+                @keyframes slideInLeft {
+                    from { opacity: 0; transform: translateX(-50px); }
+                    to { opacity: 1; transform: translateX(0); }
+                }
+                @keyframes slideInRight {
+                    from { opacity: 0; transform: translateX(50px); }
+                    to { opacity: 1; transform: translateX(0); }
+                }
+
+                .animate-from-right {
+                    opacity: 0;
+                    transform: translateX(50px);
+                    transition: opacity 1.5s cubic-bezier(0.16, 1, 0.3, 1), transform 1.5s cubic-bezier(0.16, 1, 0.3, 1);
+                }
+                .fade-in-section.is-visible .animate-from-right {
+                    opacity: 1;
+                    transform: translateX(0);
+                }
+
+                .animate-from-left {
+                    opacity: 0;
+                    transform: translateX(-50px);
+                    transition: opacity 1.5s cubic-bezier(0.16, 1, 0.3, 1), transform 1.5s cubic-bezier(0.16, 1, 0.3, 1);
+                }
+                .fade-in-section.is-visible .animate-from-left {
+                    opacity: 1;
+                    transform: translateX(0);
+                }
+
+                .about-section-wrapper {
+                    opacity: 1 !important;
+                    transform: none !important;
+                    visibility: visible !important;
+                    transition: none !important;
+                }
+
+                .about-animate-left {
+                    opacity: 0;
+                    transform: translateX(-40px);
+                    transition: opacity 1.6s cubic-bezier(0.16, 1, 0.3, 1), transform 1.6s cubic-bezier(0.16, 1, 0.3, 1);
+                }
+                .fade-in-section.is-visible .about-animate-left {
+                    opacity: 1;
+                    transform: translateX(0);
+                }
+
+                .about-animate-right {
+                    opacity: 0;
+                    transform: translateX(40px);
+                    transition: opacity 1.6s cubic-bezier(0.16, 1, 0.3, 1), transform 1.6s cubic-bezier(0.16, 1, 0.3, 1);
+                }
+                .fade-in-section.is-visible .about-animate-right {
+                    opacity: 1;
+                    transform: translateX(0);
+                }
+
+                .about-floating-img {
+                    opacity: 0;
+                    transform: translate(-30px, 30px) scale(0.9);
+                    transition: opacity 1.8s cubic-bezier(0.16, 1, 0.3, 1), transform 1.8s cubic-bezier(0.16, 1, 0.3, 1);
+                    transition-delay: 0.2s;
+                }
+                .fade-in-section.is-visible .about-floating-img {
+                    opacity: 1;
+                    transform: translate(0, 0) scale(1);
                 }
 
                 .hero-slide-bg {
@@ -361,8 +519,8 @@ export default function HomePage() {
                     <a href="#packages" className="nav-link-custom">Packages</a>
                     <a href="#about" className="nav-link-custom">About</a>
                     <a href="#contact" className="nav-link-custom">Contact</a>
+                    <a href="#reviews" className="nav-link-custom">Reviews</a>
                 </nav>
-
 
             </header>
 
@@ -557,11 +715,11 @@ export default function HomePage() {
                 </section>
             </FadeInSection>
             {/* ====== ACCOMMODATION SECTION ====== */}
-            <FadeInSection>
-                <section id="rooms" style={{
-                    maxWidth: '1100px', margin: '0 auto',
-                    padding: '40px 24px 40px',
-                }}>
+            <section id="rooms" style={{
+                maxWidth: '1400px', margin: '0 auto',
+                padding: '40px 40px 40px',
+            }}>
+                <FadeInSection>
                     <div style={{ textAlign: 'center', marginBottom: '56px' }}>
                         <p style={{
                             fontFamily: "'Inter', sans-serif", fontSize: '12px',
@@ -578,21 +736,59 @@ export default function HomePage() {
                             color: colors.textMuted, maxWidth: '600px', margin: '0 auto', lineHeight: 1.7,
                         }}>Stay in an individual unique wooden house with stage structure so-called Indonesian Rumah Panggung where we sleep tight with the sounds of tropical nature and breathe in clean greenery ocean breeze air.</p>
                     </div>
+                </FadeInSection>
 
-                    <div style={{
-                        display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '28px'
-                    }}>
-                        {[
-                            { id: 'deluxe', name: 'Deluxe Rooms', size: '32sqm', desc: 'Spacious rooms with serene courtyards featuring the tropical gardens', img: 'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=600' },
-                            { id: 'suite', name: 'Suite Rooms', size: '38sqm', desc: 'Spacious rooms with serene courtyards featuring the rice field view', img: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=600' }
-                        ].map((room, i) => (
+                <div style={{
+                    display: 'flex', flexDirection: 'column', gap: '48px'
+                }}>
+                    {[
+                        { id: 'deluxe', name: 'Deluxe Rooms', size: '32sqm', desc: 'Rasakan ketenangan paripurna di Deluxe Room kami. Kamar luas ini dirancang khusus dengan sentuhan estetika Bali otentik, memadukan kenyamanan modern dan keanggunan tradisional. Nikmati pagi yang damai dengan pemandangan taman tropis yang rimbun langsung dari teras pribadi Anda, memberikan harmoni dan kesegaran untuk memulai hari.', img: 'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=600' },
+                        { id: 'suite', name: 'Suite Rooms', size: '38sqm', desc: 'Tingkatkan pengalaman menginap Anda ke level selanjutnya di Suite Room kami. Menawarkan ruang yang lebih lapang dengan interior mewah yang memanjakan. Bersantailah sambil memandangi hamparan sawah hijau yang menyejukkan mata. Suite ini adalah tempat pelarian sempurna bagi Anda yang mencari privasi dan kenyamanan absolut.', img: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=600' }
+                    ].map((room, i) => (
+                        <FadeInSection key={i}>
                             <div
-                                key={i}
-                                className="pkg-card"
-                                onClick={() => router.push(`/booking-page/custom`)}
-                                style={{ animation: `slideIn 0.6s ease ${0.1 * i}s both`, display: 'flex', flexDirection: 'column' }}
+                                className={room.id === 'deluxe' ? 'animate-from-right' : 'animate-from-left'}
+                                style={{
+                                    display: 'flex',
+                                    flexDirection: room.id === 'deluxe' ? 'row' : 'row-reverse',
+                                    alignItems: 'center',
+                                    gap: '48px',
+                                }}
                             >
-                                <div style={{ position: 'relative', height: '240px', overflow: 'hidden' }}>
+                                <div style={{
+                                    flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center',
+                                    paddingLeft: room.id === 'deluxe' ? '400px' : '0',
+                                    paddingRight: room.id === 'suite' ? '400px' : '0',
+                                    textAlign: room.id === 'deluxe' ? 'right' : 'left'
+                                }}>
+                                    <h4 style={{
+                                        fontFamily: "'Playfair Display', serif", fontSize: '32px', fontWeight: '600',
+                                        color: colors.text, marginBottom: '30px'
+                                    }}>{room.name}</h4>
+                                    <p style={{
+                                        fontFamily: "'Inter', sans-serif", fontSize: '15px', color: colors.textMuted,
+                                        lineHeight: 1.8, marginBottom: '32px'
+                                    }}>{room.desc}</p>
+                                    <div
+                                        onClick={() => router.push(`/booking-page/custom`)}
+                                        style={{
+                                            fontFamily: "'Inter', sans-serif", fontSize: '14px', fontWeight: '600',
+                                            color: colors.accent, display: 'inline-flex', alignItems: 'center', gap: '8px',
+                                            textTransform: 'uppercase', letterSpacing: '1px',
+                                            cursor: 'pointer',
+                                            alignSelf: room.id === 'deluxe' ? 'flex-end' : 'flex-start'
+                                        }}>
+                                        Book Room <ChevronRight size={16} />
+                                    </div>
+                                </div>
+                                <div
+                                    onClick={() => router.push(`/booking-page/custom`)}
+                                    style={{
+                                        flex: '0 0 30%', position: 'relative', height: '280px',
+                                        borderRadius: '20px', overflow: 'hidden',
+                                        cursor: 'pointer'
+                                    }}
+                                >
                                     <img
                                         src={room.img}
                                         alt={room.name}
@@ -604,44 +800,26 @@ export default function HomePage() {
                                         onMouseLeave={e => e.target.style.transform = 'scale(1)'}
                                     />
                                     <div style={{
-                                        position: 'absolute', bottom: '16px', right: '16px',
-                                        background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
-                                        color: '#fff', padding: '6px 12px', borderRadius: '8px',
-                                        fontSize: '12px', fontWeight: '500', fontFamily: "'Inter', sans-serif",
+                                        position: 'absolute', bottom: '20px', right: '20px',
+                                        background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(8px)',
+                                        color: colors.text, padding: '8px 16px', borderRadius: '12px',
+                                        fontSize: '13px', fontWeight: '600', fontFamily: "'Inter', sans-serif",
+                                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
                                     }}>
                                         {room.size}
                                     </div>
                                 </div>
-                                <div style={{ padding: '24px', flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                                    <div>
-                                        <h4 style={{
-                                            fontFamily: "'Playfair Display', serif", fontSize: '22px', fontWeight: '600',
-                                            color: colors.text, marginBottom: '12px'
-                                        }}>{room.name}</h4>
-                                        <p style={{
-                                            fontFamily: "'Inter', sans-serif", fontSize: '14px', color: colors.textMuted,
-                                            lineHeight: 1.6, marginBottom: '24px'
-                                        }}>{room.desc}</p>
-                                    </div>
-                                    <div style={{
-                                        fontFamily: "'Inter', sans-serif", fontSize: '13px', fontWeight: '600',
-                                        color: colors.accent, display: 'flex', alignItems: 'center', gap: '8px',
-                                        textTransform: 'uppercase', letterSpacing: '0.5px'
-                                    }}>
-                                        Book Room
-                                    </div>
-                                </div>
                             </div>
-                        ))}
-                    </div>
-                </section>
-            </FadeInSection>
+                        </FadeInSection>
+                    ))}
+                </div>
+            </section>
 
             {/* ====== PACKAGES SECTION ====== */}
             <FadeInSection>
                 <section id="packages" style={{
                     maxWidth: '1100px', margin: '0 auto',
-                    padding: '0px 24px 48px',
+                    padding: '0px 24px 24px',
                 }}>
                     {/* Header */}
                     <div style={{ textAlign: 'center', marginBottom: '56px' }}>
@@ -778,24 +956,21 @@ export default function HomePage() {
                         }}>No packages available at the moment.</p>
                     )}
                 </section>
+            </FadeInSection>
 
-                {/* ====== ABOUT SECTION ====== */}
+            {/* ====== ABOUT SECTION ====== */}
+            <FadeInSection className="about-section-wrapper">
                 <section id="about" style={{
                     background: '#fff',
                     borderTop: `1px solid ${colors.border}`,
                     borderBottom: `1px solid ${colors.border}`,
                 }}>
                     <div style={{
-                        maxWidth: '1100px', margin: '0 auto', padding: '64px 24px',
+                        maxWidth: '1300px', margin: '0 auto', padding: '16px 20px 65px',
                         display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '80px', alignItems: 'center',
                     }}>
                         {/* Text */}
-                        <div>
-                            <p style={{
-                                fontFamily: "'Inter', sans-serif", fontSize: '12px',
-                                fontWeight: '600', letterSpacing: '3px', textTransform: 'uppercase',
-                                color: colors.accent, marginBottom: '12px',
-                            }}>About Us</p>
+                        <div className="about-animate-left">
                             <h3 style={{
                                 fontFamily: "'Playfair Display', serif",
                                 fontSize: '36px', fontWeight: '600', lineHeight: 1.2,
@@ -822,7 +997,7 @@ export default function HomePage() {
                                 {[
                                     { number: '10+', label: 'Years Experience' },
                                     { number: '500+', label: 'Happy Guests' },
-                                    { number: '9.2', label: 'Rating' },
+                                    { number: averageRating, label: 'Rating' },
                                 ].map((stat, i) => (
                                     <div key={i}>
                                         <div style={{
@@ -845,15 +1020,17 @@ export default function HomePage() {
                         {/* Image */}
                         <div style={{ position: 'relative' }}>
                             <img
+                                className="about-animate-right"
                                 src="https://images.unsplash.com/photo-1599901860904-17e6ed7083a0?w=700&q=80"
                                 alt="Yoga retreat"
                                 style={{
-                                    width: '100%', height: '520px', objectFit: 'cover',
+                                    width: '100%', height: '420px', objectFit: 'cover',
                                     borderRadius: '20px',
                                 }}
                             />
                             {/* Floating accent image */}
                             <img
+                                className="about-floating-img"
                                 src="https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=400&q=80"
                                 alt="Meditation"
                                 style={{
@@ -868,72 +1045,194 @@ export default function HomePage() {
                 </section>
             </FadeInSection>
 
-            {/* ====== CONTACT CTA SECTION ====== */}
+            {/* ====== CONTACT & REVIEWS SECTION ====== */}
             <FadeInSection>
                 <section id="contact" style={{
                     background: colors.dark, color: '#fff',
-                    padding: '96px 24px', textAlign: 'center',
+                    padding: '96px 24px',
                 }}>
-                    <div style={{ maxWidth: '640px', margin: '0 auto' }}>
-                        <p style={{
-                            fontFamily: "'Inter', sans-serif", fontSize: '12px',
-                            fontWeight: '600', letterSpacing: '3px', textTransform: 'uppercase',
-                            color: colors.accent, marginBottom: '16px',
-                        }}>Get in Touch</p>
-                        <h3 style={{
-                            fontFamily: "'Playfair Display', serif",
-                            fontSize: '36px', fontWeight: '600', lineHeight: 1.2,
-                            marginBottom: '20px',
-                        }}>Ready to Begin<br />Your Journey?</h3>
-                        <p style={{
-                            fontFamily: "'Inter', sans-serif", fontSize: '15px',
-                            color: 'rgba(255,255,255,0.6)', lineHeight: 1.7,
-                            marginBottom: '40px',
-                        }}>
-                            Contact us today to book your transformative retreat experience in beautiful Bali.
-                        </p>
+                    <div style={{
+                        maxWidth: '1200px', margin: '0 auto',
+                        display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
+                        gap: '64px', alignItems: 'center'
+                    }}>
 
-                        <div style={{
-                            display: 'flex', justifyContent: 'center', gap: '32px', flexWrap: 'wrap',
-                            marginBottom: '40px',
-                        }}>
-                            {[
-                                { icon: <Phone size={16} />, text: '+62 361 123 4567' },
-                                { icon: <Mail size={16} />, text: 'hello@thedukuhretreat.com' },
-                                { icon: <Instagram size={16} />, text: '@thedukuhretreat' },
-                            ].map((item, i) => (
-                                <div key={i} style={{
-                                    display: 'flex', alignItems: 'center', gap: '10px',
-                                    fontFamily: "'Inter', sans-serif", fontSize: '14px',
-                                    color: 'rgba(255,255,255,0.75)',
-                                }}>
-                                    <span style={{ color: colors.accent }}>{item.icon}</span>
-                                    {item.text}
-                                </div>
-                            ))}
+                        {/* LEFT: Contact CTA */}
+                        <div>
+                            <h3 style={{
+                                fontFamily: "'Playfair Display', serif",
+                                fontSize: '36px', fontWeight: '600', lineHeight: 1.2,
+                                marginBottom: '20px',
+                            }}>Ready to Begin<br />Your Journey?</h3>
+                            <p style={{
+                                fontFamily: "'Inter', sans-serif", fontSize: '15px',
+                                color: 'rgba(255,255,255,0.6)', lineHeight: 1.7,
+                                marginBottom: '40px',
+                            }}>
+                                Contact us today to book your transformative retreat experience in beautiful Bali.
+                            </p>
+
+                            <div style={{
+                                display: 'flex', flexDirection: 'column', gap: '16px',
+                                marginBottom: '40px',
+                            }}>
+                                {[
+                                    { icon: <Phone size={16} />, text: '+62 361 123 4567' },
+                                    { icon: <Mail size={16} />, text: 'hello@thedukuhretreat.com' },
+                                    { icon: <Instagram size={16} />, text: '@thedukuhretreat' },
+                                ].map((item, i) => (
+                                    <div key={i} style={{
+                                        display: 'flex', alignItems: 'center', gap: '10px',
+                                        fontFamily: "'Inter', sans-serif", fontSize: '14px',
+                                        color: 'rgba(255,255,255,0.75)',
+                                    }}>
+                                        <span style={{ color: colors.accent }}>{item.icon}</span>
+                                        {item.text}
+                                    </div>
+                                ))}
+                            </div>
+
+                            <button
+                                onClick={() => router.push('/booking-page/custom?reset=true')}
+                                style={{
+                                    background: 'transparent', color: '#fff',
+                                    border: '1.5px solid rgba(255,255,255,0.3)',
+                                    padding: '14px 40px', borderRadius: '8px',
+                                    fontFamily: "'Inter', sans-serif", fontSize: '14px', fontWeight: '600',
+                                    cursor: 'pointer', transition: 'all 0.3s',
+                                    letterSpacing: '0.5px',
+                                }}
+                                onMouseEnter={e => {
+                                    e.target.style.background = colors.accent;
+                                    e.target.style.borderColor = colors.accent;
+                                }}
+                                onMouseLeave={e => {
+                                    e.target.style.background = 'transparent';
+                                    e.target.style.borderColor = 'rgba(255,255,255,0.3)';
+                                }}
+                            >
+                                Book Your Retreat
+                            </button>
                         </div>
 
-                        <button
-                            onClick={() => router.push('/booking-page/custom?reset=true')}
-                            style={{
-                                background: 'transparent', color: '#fff',
-                                border: '1.5px solid rgba(255,255,255,0.3)',
-                                padding: '14px 40px', borderRadius: '8px',
-                                fontFamily: "'Inter', sans-serif", fontSize: '14px', fontWeight: '600',
-                                cursor: 'pointer', transition: 'all 0.3s',
-                                letterSpacing: '0.5px',
-                            }}
-                            onMouseEnter={e => {
-                                e.target.style.background = colors.accent;
-                                e.target.style.borderColor = colors.accent;
-                            }}
-                            onMouseLeave={e => {
-                                e.target.style.background = 'transparent';
-                                e.target.style.borderColor = 'rgba(255,255,255,0.3)';
-                            }}
-                        >
-                            Book Your Retreat
-                        </button>
+                        {/* RIGHT: Reviews */}
+                        <div id="reviews">
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
+                                <div>
+                                    <p style={{
+                                        fontFamily: "'Inter', sans-serif", fontSize: '12px',
+                                        fontWeight: '600', letterSpacing: '3px', textTransform: 'uppercase',
+                                        color: colors.accent, marginBottom: '8px',
+                                    }}>Guest Experiences</p>
+                                </div>
+                                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                        <button onClick={() => scrollReviews('left')} style={{
+                                            background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none',
+                                            width: '36px', height: '36px', borderRadius: '50%',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            cursor: 'pointer', transition: 'background 0.3s'
+                                        }} onMouseEnter={e => e.target.style.background = 'rgba(255,255,255,0.2)'} onMouseLeave={e => e.target.style.background = 'rgba(255,255,255,0.1)'}>
+                                            <ChevronLeft size={18} />
+                                        </button>
+                                        <button onClick={() => scrollReviews('right')} style={{
+                                            background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none',
+                                            width: '36px', height: '36px', borderRadius: '50%',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            cursor: 'pointer', transition: 'background 0.3s'
+                                        }} onMouseEnter={e => e.target.style.background = 'rgba(255,255,255,0.2)'} onMouseLeave={e => e.target.style.background = 'rgba(255,255,255,0.1)'}>
+                                            <ChevronRight size={18} />
+                                        </button>
+                                    </div>
+                                    <button
+                                        onClick={() => setIsReviewModalOpen(true)}
+                                        style={{
+                                            background: colors.accent, color: '#fff', border: 'none',
+                                            padding: '10px 24px', borderRadius: '8px',
+                                            fontFamily: "'Inter', sans-serif", fontSize: '13px', fontWeight: '600',
+                                            cursor: 'pointer', transition: 'background 0.3s',
+                                        }}
+                                        onMouseEnter={e => e.target.style.background = colors.accentHover}
+                                        onMouseLeave={e => e.target.style.background = colors.accent}
+                                    >
+                                        Tulis Ulasan
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div
+                                ref={reviewsScrollRef}
+                                style={{
+                                    display: 'flex', overflowX: 'auto', gap: '20px', paddingBottom: '16px',
+                                    scrollSnapType: 'x mandatory', msOverflowStyle: 'none', scrollbarWidth: 'none',
+                                }}
+                            >
+                                {publishedReviews.length > 0 ? (
+                                    publishedReviews.map((rev) => (
+                                        <div key={rev.id} style={{
+                                            minWidth: '280px', maxWidth: '280px', background: 'rgba(255,255,255,0.05)',
+                                            padding: '24px', borderRadius: '16px',
+                                            border: '1px solid rgba(255,255,255,0.1)',
+                                            scrollSnapAlign: 'start',
+                                            display: 'flex', flexDirection: 'column'
+                                        }}>
+                                            <div style={{ display: 'flex', gap: '4px', marginBottom: '16px' }}>
+                                                {[...Array(5)].map((_, i) => (
+                                                    <Star key={i} size={14} fill={i < rev.rating ? "#f59e0b" : "none"} stroke={i < rev.rating ? "#f59e0b" : "rgba(255,255,255,0.2)"} />
+                                                ))}
+                                            </div>
+                                            <p style={{
+                                                fontFamily: "'Inter', sans-serif", fontSize: '14px',
+                                                color: 'rgba(255,255,255,0.8)', lineHeight: 1.6, flexGrow: 1,
+                                                fontStyle: 'italic', marginBottom: '24px'
+                                            }}>"{rev.comment}"</p>
+                                            <div>
+                                                <h5 style={{
+                                                    fontFamily: "'Playfair Display', serif", fontSize: '15px',
+                                                    fontWeight: '600', color: '#fff', marginBottom: '4px'
+                                                }}>{rev.guestName}</h5>
+                                                <p style={{
+                                                    fontFamily: "'Inter', sans-serif", fontSize: '12px',
+                                                    color: 'rgba(255,255,255,0.5)'
+                                                }}>{new Date(rev.created_at || rev.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                                            </div>
+                                            {rev.admin_reply && (
+                                                <div style={{
+                                                    marginTop: '12px',
+                                                    padding: '10px 14px',
+                                                    background: 'rgba(255,255,255,0.06)',
+                                                    borderRadius: '10px',
+                                                    borderLeft: `3px solid ${colors.accent}`,
+                                                    fontSize: '13px',
+                                                    color: 'rgba(255,255,255,0.85)',
+                                                    fontFamily: "'Inter', sans-serif",
+                                                    lineHeight: 1.5
+                                                }}>
+                                                    <span style={{
+                                                        fontWeight: '600',
+                                                        color: colors.accent,
+                                                        display: 'block',
+                                                        marginBottom: '4px',
+                                                        fontSize: '11px',
+                                                        textTransform: 'uppercase',
+                                                        letterSpacing: '0.5px'
+                                                    }}>
+                                                        The Dukuh Retreat:
+                                                    </span>
+                                                    {rev.admin_reply}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div style={{
+                                        width: '100%', fontFamily: "'Inter', sans-serif",
+                                        color: 'rgba(255,255,255,0.5)', padding: '24px 0',
+                                    }}>Belum ada ulasan yang dipublikasikan.</div>
+                                )}
+                            </div>
+                        </div>
+
                     </div>
                 </section>
             </FadeInSection>
@@ -994,6 +1293,121 @@ export default function HomePage() {
                     © 2025 The Dukuh Retreat. All rights reserved.
                 </div>
             </footer>
+
+            {/* ====== REVIEW MODAL ====== */}
+            {isReviewModalOpen && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+                    zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    padding: '24px'
+                }}>
+                    <div style={{
+                        background: '#fff', borderRadius: '20px', width: '100%', maxWidth: '500px',
+                        padding: '32px', position: 'relative',
+                        boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
+                        animation: 'fadeInUp 0.4s ease'
+                    }}>
+                        <button
+                            onClick={() => setIsReviewModalOpen(false)}
+                            style={{
+                                position: 'absolute', top: '24px', right: '24px',
+                                background: 'transparent', border: 'none',
+                                fontSize: '24px', color: colors.textMuted, cursor: 'pointer',
+                            }}
+                        >&times;</button>
+
+                        <h3 style={{
+                            fontFamily: "'Playfair Display', serif", fontSize: '28px',
+                            fontWeight: '600', color: colors.text, marginBottom: '8px'
+                        }}>Tulis Ulasan Anda</h3>
+                        <p style={{
+                            fontFamily: "'Inter', sans-serif", fontSize: '14px', color: colors.textMuted,
+                            marginBottom: '24px'
+                        }}>Bagikan pengalaman Anda menginap di The Dukuh Retreat.</p>
+
+                        {submitReviewMessage && (
+                            <div style={{
+                                padding: '12px 16px', borderRadius: '8px', marginBottom: '20px',
+                                background: submitReviewMessage.type === 'success' ? '#D1FAE5' : '#FEE2E2',
+                                color: submitReviewMessage.type === 'success' ? '#065F46' : '#991B1B',
+                                fontFamily: "'Inter', sans-serif", fontSize: '13px', fontWeight: '500'
+                            }}>
+                                {submitReviewMessage.text}
+                            </div>
+                        )}
+
+                        <form onSubmit={handleReviewSubmit}>
+                            <div style={{ marginBottom: '16px' }}>
+                                <label style={{
+                                    display: 'block', fontFamily: "'Inter', sans-serif", fontSize: '13px',
+                                    fontWeight: '600', color: colors.text, marginBottom: '8px'
+                                }}>Nama Lengkap</label>
+                                <input
+                                    type="text"
+                                    value={reviewForm.guestName}
+                                    onChange={(e) => setReviewForm({ ...reviewForm, guestName: e.target.value })}
+                                    style={{
+                                        width: '100%', padding: '12px 16px', borderRadius: '8px',
+                                        border: `1px solid ${colors.border}`, fontFamily: "'Inter', sans-serif",
+                                        fontSize: '14px', outline: 'none'
+                                    }}
+                                    placeholder="Masukkan nama Anda"
+                                    required
+                                />
+                            </div>
+                            <div style={{ marginBottom: '16px' }}>
+                                <label style={{
+                                    display: 'block', fontFamily: "'Inter', sans-serif", fontSize: '13px',
+                                    fontWeight: '600', color: colors.text, marginBottom: '8px'
+                                }}>Rating</label>
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                        <Star
+                                            key={star}
+                                            size={28}
+                                            fill={star <= reviewForm.rating ? "#f59e0b" : "none"}
+                                            stroke={star <= reviewForm.rating ? "#f59e0b" : "#cbd5e1"}
+                                            style={{ cursor: 'pointer' }}
+                                            onClick={() => setReviewForm({ ...reviewForm, rating: star })}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                            <div style={{ marginBottom: '24px' }}>
+                                <label style={{
+                                    display: 'block', fontFamily: "'Inter', sans-serif", fontSize: '13px',
+                                    fontWeight: '600', color: colors.text, marginBottom: '8px'
+                                }}>Komentar</label>
+                                <textarea
+                                    value={reviewForm.comment}
+                                    onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })}
+                                    style={{
+                                        width: '100%', padding: '12px 16px', borderRadius: '8px',
+                                        border: `1px solid ${colors.border}`, fontFamily: "'Inter', sans-serif",
+                                        fontSize: '14px', minHeight: '100px', outline: 'none', resize: 'vertical'
+                                    }}
+                                    placeholder="Ceritakan pengalaman Anda..."
+                                    required
+                                />
+                            </div>
+                            <button
+                                type="submit"
+                                disabled={isSubmittingReview}
+                                style={{
+                                    width: '100%', background: colors.accent, color: '#fff',
+                                    border: 'none', padding: '14px', borderRadius: '8px',
+                                    fontFamily: "'Inter', sans-serif", fontSize: '15px', fontWeight: '600',
+                                    cursor: isSubmittingReview ? 'not-allowed' : 'pointer',
+                                    opacity: isSubmittingReview ? 0.7 : 1,
+                                }}
+                            >
+                                {isSubmittingReview ? 'Mengirim...' : 'Kirim Ulasan'}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
 
             <WhatsAppButton />
         </div>
