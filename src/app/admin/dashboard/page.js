@@ -49,13 +49,18 @@ export default function DashboardPage() {
 
         const fetchDashboardData = async () => {
             try {
-                // 1. Ambil Reservasi Terbaru (Limit 5 untuk tabel bawah)
+                const d = new Date();
+                const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+                // 1. Ambil Reservasi Terbaru (Limit 5 untuk tabel bawah) yang belum lewat tanggal checkout dan status CONFIRMED/PAID
                 const { data: bookings, error: bookingError } = await supabase
                     .from('reservations')
                     .select(`
                         id, external_id, created_at, check_in, check_out, payment_status, room_name, package_name, total_amount,
                         guests (first_name, last_name)
                     `)
+                    .gte('check_out', today)
+                    .or('payment_status.eq.CONFIRMED,payment_status.eq.PAID')
                     .order('created_at', { ascending: false })
                     .limit(5);
 
@@ -70,21 +75,28 @@ export default function DashboardPage() {
 
                 if (pkgError) throw pkgError;
 
-                // 3. Ambil data untuk Statistik (Hanya CONFIRMED atau PAID)
-                // Kita ambil kolom total_amount, adults, dan children untuk kalkulasi
+                // 3. Ambil data untuk Statistik Reservasi Aktif (Total Booking & Total Tamu, Hanya CONFIRMED atau PAID)
+                const { data: activeReservations, error: activeResError } = await supabase
+                    .from('reservations')
+                    .select('adults, children')
+                    .gte('check_out', today)
+                    .or('payment_status.eq.CONFIRMED,payment_status.eq.PAID');
+
+                if (activeResError) throw activeResError;
+
+                const totalActiveBookings = activeReservations?.length || 0;
+                const totalActiveGuests = activeReservations?.reduce((sum, item) =>
+                    sum + (Number(item.adults) || 0) + (Number(item.children) || 0), 0) || 0;
+
+                // 4. Ambil data Pendapatan (Hanya CONFIRMED atau PAID, all-time)
                 const { data: confirmedData, error: statsError } = await supabase
                     .from('reservations')
-                    .select('total_amount, adults, children')
+                    .select('total_amount')
                     .or('payment_status.eq.CONFIRMED,payment_status.eq.PAID');
 
                 if (statsError) throw statsError;
 
-                // Kalkulasi data confirmed
-                const totalConfirmedBookings = confirmedData?.length || 0;
                 const totalRevenue = confirmedData?.reduce((sum, item) => sum + (item.total_amount || 0), 0) || 0;
-                // Total Tamu = Penjumlahan kolom adults + children dari semua booking confirmed
-                const totalGuests = confirmedData?.reduce((sum, item) =>
-                    sum + (Number(item.adults) || 0) + (Number(item.children) || 0), 0) || 0;
 
                 // Fungsi format Rupiah yang rapi
                 const formatCurrency = (val) => {
@@ -97,9 +109,9 @@ export default function DashboardPage() {
 
                 // Update state stats
                 setStats([
-                    { id: 1, label: 'Total Booking', value: totalConfirmedBookings.toString(), icon: <CalendarCheck size={24} />, color: '#4f46e5' },
+                    { id: 1, label: 'Total Booking', value: totalActiveBookings.toString(), icon: <CalendarCheck size={24} />, color: '#4f46e5' },
                     { id: 2, label: 'Paket Aktif', value: (activePackagesCount || 0).toString(), icon: <Package size={24} />, color: '#10b981' },
-                    { id: 3, label: 'Total Tamu', value: totalGuests.toString(), icon: <Users size={24} />, color: '#f59e0b' },
+                    { id: 3, label: 'Total Tamu', value: totalActiveGuests.toString(), icon: <Users size={24} />, color: '#f59e0b' },
                     { id: 4, label: 'Pendapatan', value: formatCurrency(totalRevenue), icon: <TrendingUp size={24} />, color: '#ec4899' },
                 ]);
 

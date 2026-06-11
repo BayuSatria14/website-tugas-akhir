@@ -41,6 +41,7 @@ export default function AdminLogin() {
             }
 
             // 3. Jika Berhasil
+            sessionStorage.setItem("admin_session_active", "true");
             alert("Login Admin Berhasil!");
             router.push("/admin/dashboard");
 

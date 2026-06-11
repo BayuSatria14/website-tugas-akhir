@@ -5,7 +5,8 @@ import { useRouter, usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import {
     LayoutDashboard, Package, CalendarCheck, Settings,
-    LogOut, MessageSquare, UserCheck, Plus, Edit, Trash2, ArrowLeft, Save, Eye
+    LogOut, MessageSquare, UserCheck, Plus, Edit, Trash2, ArrowLeft, Save, Eye,
+    ZoomIn, ZoomOut, Crop
 } from 'lucide-react';
 
 
@@ -21,6 +22,221 @@ export default function PackagesPage() {
 
     const [imageFile, setImageFile] = useState(null);
     const [imagePreview, setImagePreview] = useState("");
+
+    // Image Cropper States
+    const [isCropModalOpen, setIsCropModalOpen] = useState(false);
+    const [cropImageSrc, setCropImageSrc] = useState("");
+    const [cropImageName, setCropImageName] = useState("package-image.jpg");
+    const [cropZoom, setCropZoom] = useState(1);
+    const [cropOffset, setCropOffset] = useState({ x: 0, y: 0 });
+    const [imageDims, setImageDims] = useState(null);
+    const [isDragging, setIsDragging] = useState(false);
+    const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+    const [isImageLoading, setIsImageLoading] = useState(false);
+    
+    const imgRef = React.useRef(null);
+    const viewportRef = React.useRef(null);
+
+    // Dynamic drag-drop listener for the window boundary
+    useEffect(() => {
+        if (!isDragging) return;
+
+        const handleWindowMouseMove = (e) => {
+            handleDragMove(e.clientX, e.clientY);
+        };
+        
+        const handleWindowTouchMove = (e) => {
+            if (e.touches.length === 1) {
+                handleDragMove(e.touches[0].clientX, e.touches[0].clientY);
+            }
+        };
+
+        const handleWindowMouseUp = () => {
+            handleEndDrag();
+        };
+
+        window.addEventListener('mousemove', handleWindowMouseMove);
+        window.addEventListener('mouseup', handleWindowMouseUp);
+        window.addEventListener('touchmove', handleWindowTouchMove);
+        window.addEventListener('touchend', handleWindowMouseUp);
+
+        return () => {
+            window.removeEventListener('mousemove', handleWindowMouseMove);
+            window.removeEventListener('mouseup', handleWindowMouseUp);
+            window.removeEventListener('touchmove', handleWindowTouchMove);
+            window.removeEventListener('touchend', handleWindowMouseUp);
+        };
+    }, [isDragging, dragStart, cropOffset, cropZoom, imageDims]);
+
+    // Handlers for image loading and zoom/panning
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setCropImageName(file.name);
+            const objectUrl = URL.createObjectURL(file);
+            setCropImageSrc(objectUrl);
+            setIsImageLoading(true);
+            setIsCropModalOpen(true);
+            e.target.value = "";
+        }
+    };
+
+    const handleAdjustExistingImage = () => {
+        if (imagePreview) {
+            setCropImageSrc(imagePreview);
+            let filename = 'package-image.jpg';
+            if (imageFile) {
+                filename = imageFile.name;
+            } else if (formData.image_url) {
+                filename = formData.image_url.split('/').pop() || 'package-image.jpg';
+            }
+            setCropImageName(filename);
+            setIsImageLoading(true);
+            setIsCropModalOpen(true);
+        }
+    };
+
+    const handleImageLoad = (e) => {
+        setIsImageLoading(false);
+        const img = e.target;
+        const viewport = viewportRef.current;
+        if (!viewport) return;
+
+        const vWidth = viewport.clientWidth;
+        const vHeight = viewport.clientHeight;
+        const vRatio = vWidth / vHeight;
+
+        const imgWidth = img.naturalWidth;
+        const imgHeight = img.naturalHeight;
+        const imgRatio = imgWidth / imgHeight;
+
+        let baseScale = 1;
+        if (imgRatio > vRatio) {
+            baseScale = vHeight / imgHeight;
+        } else {
+            baseScale = vWidth / imgWidth;
+        }
+
+        const renderW = imgWidth * baseScale;
+        const renderH = imgHeight * baseScale;
+
+        // Centered coordinates
+        const initialX = (vWidth - renderW) / 2;
+        const initialY = (vHeight - renderH) / 2;
+
+        setImageDims({
+            naturalWidth: imgWidth,
+            naturalHeight: imgHeight,
+            baseScale,
+            renderWidth: renderW,
+            renderHeight: renderH,
+            vWidth,
+            vHeight
+        });
+
+        setCropOffset({ x: initialX, y: initialY });
+        setCropZoom(1);
+    };
+
+    const handleZoomChange = (e) => {
+        const newZoom = parseFloat(e.target.value);
+        if (!imageDims || !viewportRef.current) {
+            setCropZoom(newZoom);
+            return;
+        }
+
+        const vWidth = imageDims.vWidth;
+        const vHeight = imageDims.vHeight;
+        const cx = vWidth / 2;
+        const cy = vHeight / 2;
+        const prevZoom = cropZoom;
+
+        const newW = imageDims.renderWidth * newZoom;
+        const newH = imageDims.renderHeight * newZoom;
+
+        let newX = cx - (cx - cropOffset.x) * (newZoom / prevZoom);
+        let newY = cy - (cy - cropOffset.y) * (newZoom / prevZoom);
+
+        newX = Math.max(vWidth - newW, Math.min(0, newX));
+        newY = Math.max(vHeight - newH, Math.min(0, newY));
+
+        setCropZoom(newZoom);
+        setCropOffset({ x: newX, y: newY });
+    };
+
+    const handleStartDrag = (clientX, clientY) => {
+        if (!imageDims) return;
+        setIsDragging(true);
+        setDragStart({
+            x: clientX - cropOffset.x,
+            y: clientY - cropOffset.y
+        });
+    };
+
+    const handleDragMove = (clientX, clientY) => {
+        if (!isDragging || !imageDims) return;
+        let newX = clientX - dragStart.x;
+        let newY = clientY - dragStart.y;
+
+        const wActual = imageDims.renderWidth * cropZoom;
+        const hActual = imageDims.renderHeight * cropZoom;
+
+        newX = Math.max(imageDims.vWidth - wActual, Math.min(0, newX));
+        newY = Math.max(imageDims.vHeight - hActual, Math.min(0, newY));
+
+        setCropOffset({ x: newX, y: newY });
+    };
+
+    const handleEndDrag = () => {
+        setIsDragging(false);
+    };
+
+    const applyCrop = () => {
+        if (!imageDims || !imgRef.current) return;
+
+        const canvas = document.createElement('canvas');
+        const targetWidth = 1200;
+        const targetHeight = 800;
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
+        
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+
+        const scaleCanvas = targetWidth / imageDims.vWidth;
+        const wDraw = imageDims.renderWidth * cropZoom * scaleCanvas;
+        const hDraw = imageDims.renderHeight * cropZoom * scaleCanvas;
+        const xDraw = cropOffset.x * scaleCanvas;
+        const yDraw = cropOffset.y * scaleCanvas;
+
+        ctx.drawImage(imgRef.current, xDraw, yDraw, wDraw, hDraw);
+
+        canvas.toBlob((blob) => {
+            if (blob) {
+                const file = new File([blob], cropImageName, { type: 'image/jpeg', lastModified: Date.now() });
+                setImageFile(file);
+                
+                if (imagePreview && imagePreview.startsWith('blob:')) {
+                    URL.revokeObjectURL(imagePreview);
+                }
+                
+                setImagePreview(URL.createObjectURL(file));
+                setIsCropModalOpen(false);
+            }
+        }, 'image/jpeg', 0.92);
+    };
+
+    const onMouseDown = (e) => {
+        e.preventDefault();
+        handleStartDrag(e.clientX, e.clientY);
+    };
+
+    const onTouchStart = (e) => {
+        if (e.touches.length === 1) {
+            handleStartDrag(e.touches[0].clientX, e.touches[0].clientY);
+        }
+    };
 
     const [formData, setFormData] = useState({
         title: '',
@@ -58,6 +274,10 @@ export default function PackagesPage() {
         });
         setImageFile(null);
         setImagePreview("");
+        setCropImageSrc("");
+        setCropZoom(1);
+        setCropOffset({ x: 0, y: 0 });
+        setImageDims(null);
         const fileInput = document.querySelector('input[type="file"]');
         if (fileInput) fileInput.value = "";
     };
@@ -330,6 +550,155 @@ export default function PackagesPage() {
                     display: flex; align-items: center; gap: 8px; transition: background 0.3s;
                 }
                 .add-btn:hover { background: #8B7355; }
+
+                /* Premium Cropper CSS styling */
+                .crop-modal-overlay {
+                    position: fixed;
+                    top: 0; left: 0; right: 0; bottom: 0;
+                    background: rgba(18, 18, 16, 0.7);
+                    backdrop-filter: blur(8px);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 9999;
+                    animation: fadeIn 0.3s ease;
+                }
+
+                @keyframes fadeIn {
+                    from { opacity: 0; }
+                    to { opacity: 1; }
+                }
+
+                .crop-modal-container {
+                    background: white;
+                    width: 90%;
+                    max-width: 580px;
+                    border-radius: 20px;
+                    padding: 28px;
+                    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.12);
+                    border: 1px solid rgba(0, 0, 0, 0.05);
+                    display: flex;
+                    flex-direction: column;
+                    gap: 20px;
+                    animation: scaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+                }
+
+                @keyframes scaleUp {
+                    from { transform: scale(0.95) translateY(10px); }
+                    to { transform: scale(1) translateY(0); }
+                }
+
+                .crop-modal-header h3 {
+                    font-family: 'Playfair Display', serif;
+                    font-size: 22px;
+                    color: #1A1A1A;
+                    margin: 0 0 4px 0;
+                    font-weight: 600;
+                }
+
+                .crop-modal-subtitle {
+                    font-size: 13px;
+                    color: #6B6B6B;
+                    margin: 0;
+                    font-family: 'Inter', sans-serif;
+                }
+
+                .crop-viewport-wrapper {
+                    width: 100%;
+                    aspect-ratio: 3/2;
+                    background: #141412;
+                    border-radius: 12px;
+                    overflow: hidden;
+                    position: relative;
+                    border: 1px solid #E8E5E0;
+                    box-shadow: inset 0 2px 8px rgba(0,0,0,0.1);
+                }
+
+                .crop-viewport {
+                    width: 100%;
+                    height: 100%;
+                    position: relative;
+                    cursor: move;
+                    touch-action: none;
+                }
+
+                .crop-loading-overlay {
+                    position: absolute;
+                    inset: 0;
+                    background: rgba(26, 26, 24, 0.8);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: #E8E5E0;
+                    font-size: 14px;
+                    font-weight: 500;
+                    z-index: 10;
+                }
+
+                .crop-controls {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 12px;
+                }
+
+                .crop-zoom-slider-container {
+                    display: flex;
+                    align-items: center;
+                    gap: 16px;
+                    background: #FAFAF7;
+                    padding: 12px 20px;
+                    border-radius: 10px;
+                    border: 1px solid #E8E5E0;
+                }
+
+                .slider-icon {
+                    color: #8B7355;
+                }
+
+                .crop-zoom-slider {
+                    flex: 1;
+                    -webkit-appearance: none;
+                    appearance: none;
+                    height: 6px;
+                    border-radius: 3px;
+                    background: #E8E5E0;
+                    outline: none;
+                    transition: background 0.3s;
+                }
+
+                .crop-zoom-slider::-webkit-slider-thumb {
+                    -webkit-appearance: none;
+                    appearance: none;
+                    width: 18px;
+                    height: 18px;
+                    border-radius: 50%;
+                    background: #8B7355;
+                    cursor: pointer;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+                    transition: transform 0.1s;
+                }
+
+                .crop-zoom-slider::-webkit-slider-thumb:hover {
+                    transform: scale(1.15);
+                }
+
+                .crop-instructions {
+                    text-align: center;
+                }
+
+                .crop-instructions p {
+                    font-size: 12px;
+                    color: #6B6B6B;
+                    margin: 0;
+                    font-family: 'Inter', sans-serif;
+                }
+
+                .crop-modal-actions {
+                    display: flex;
+                    justify-content: flex-end;
+                    gap: 12px;
+                    margin-top: 8px;
+                }
             `}</style>
                 <header className="main-header">
                     <h2>{view === 'list' ? 'Kelola Packages' : view === 'detail' ? 'Detail Package' : 'Form Package'}</h2>
@@ -469,13 +838,42 @@ export default function PackagesPage() {
                                         </div>
                                     </div>
                                     <div className="form-group">
-                                        <label>Gambar</label>
-                                        <input type="file" accept="image/*" className="file-input-custom" onChange={(e) => {
-                                            const file = e.target.files[0];
-                                            if (file) { setImageFile(file); setImagePreview(URL.createObjectURL(file)); }
-                                        }} />
-                                        <div className="preview-box">
-                                            {imagePreview ? <img src={imagePreview} className="preview-img" alt="Preview" /> : <span>Pratinjau Gambar</span>}
+                                        <label>Gambar Paket (Rekomendasi 3:2)</label>
+                                        <input type="file" accept="image/*" className="file-input-custom" onChange={handleFileChange} />
+                                        <div className="preview-box" style={{ position: 'relative' }}>
+                                            {imagePreview ? (
+                                                <>
+                                                    <img src={imagePreview} className="preview-img" alt="Preview" />
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleAdjustExistingImage}
+                                                        style={{
+                                                            position: 'absolute',
+                                                            bottom: '12px',
+                                                            right: '12px',
+                                                            background: 'rgba(26, 26, 26, 0.8)',
+                                                            backdropFilter: 'blur(4px)',
+                                                            color: 'white',
+                                                            border: 'none',
+                                                            padding: '8px 16px',
+                                                            borderRadius: '8px',
+                                                            cursor: 'pointer',
+                                                            fontSize: '12px',
+                                                            fontWeight: '600',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '6px',
+                                                            transition: 'background 0.3s'
+                                                        }}
+                                                        onMouseEnter={(e) => e.target.style.background = '#8B7355'}
+                                                        onMouseLeave={(e) => e.target.style.background = 'rgba(26, 26, 26, 0.8)'}
+                                                    >
+                                                        <Edit size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} /> Sesuaikan Posisi
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <span>Pratinjau Gambar</span>
+                                            )}
                                         </div>
                                     </div>
                                     <div className="form-group">
@@ -496,6 +894,96 @@ export default function PackagesPage() {
                         </div>
                     )}
                 </div>
+
+                {isCropModalOpen && (
+                    <div className="crop-modal-overlay">
+                        <div className="crop-modal-container">
+                            <div className="crop-modal-header">
+                                <h3>Sesuaikan Gambar Paket</h3>
+                                <p className="crop-modal-subtitle">Geser dan atur perbesaran gambar agar pas dengan bingkai (3:2)</p>
+                            </div>
+                            
+                            <div className="crop-viewport-wrapper">
+                                <div 
+                                    ref={viewportRef}
+                                    className="crop-viewport"
+                                    onMouseDown={onMouseDown}
+                                    onTouchStart={onTouchStart}
+                                >
+                                    {isImageLoading && (
+                                        <div className="crop-loading-overlay">
+                                            <span>Memuat Gambar...</span>
+                                        </div>
+                                    )}
+                                    {cropImageSrc && (
+                                        <img
+                                            ref={imgRef}
+                                            src={cropImageSrc}
+                                            crossOrigin="anonymous"
+                                            onLoad={handleImageLoad}
+                                            style={{
+                                                position: 'absolute',
+                                                left: 0,
+                                                top: 0,
+                                                width: imageDims ? `${imageDims.renderWidth}px` : 'auto',
+                                                height: imageDims ? `${imageDims.renderHeight}px` : 'auto',
+                                                transform: `translate(${cropOffset.x}px, ${cropOffset.y}px) scale(${cropZoom})`,
+                                                transformOrigin: 'top left',
+                                                pointerEvents: 'none',
+                                                userSelect: 'none',
+                                                maxWidth: 'none'
+                                            }}
+                                            alt="Crop preview"
+                                        />
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="crop-controls">
+                                <div className="crop-zoom-slider-container">
+                                    <ZoomOut size={16} className="slider-icon" />
+                                    <input 
+                                        type="range"
+                                        min="1"
+                                        max="3"
+                                        step="0.01"
+                                        value={cropZoom}
+                                        onChange={handleZoomChange}
+                                        className="crop-zoom-slider"
+                                        disabled={isImageLoading || !imageDims}
+                                    />
+                                    <ZoomIn size={16} className="slider-icon" />
+                                </div>
+                                <div className="crop-instructions">
+                                    <p>💡 <b>Tips:</b> Klik dan seret gambar untuk menggeser posisinya.</p>
+                                </div>
+                            </div>
+
+                            <div className="crop-modal-actions">
+                                <button 
+                                    type="button" 
+                                    className="btn-secondary" 
+                                    onClick={() => {
+                                        if (cropImageSrc && cropImageSrc.startsWith('blob:') && cropImageSrc !== imagePreview) {
+                                            URL.revokeObjectURL(cropImageSrc);
+                                        }
+                                        setIsCropModalOpen(false);
+                                    }}
+                                >
+                                    Batal
+                                </button>
+                                <button 
+                                    type="button" 
+                                    className="btn-primary" 
+                                    onClick={applyCrop}
+                                    disabled={isImageLoading || !imageDims}
+                                >
+                                    Terapkan
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
         </>
     );
 }

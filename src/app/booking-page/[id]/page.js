@@ -36,6 +36,7 @@ export default function BookingPage() {
     const params = useParams();
     const searchParamsHooks = useSearchParams();
     const id = params?.id;
+    const roomTypeFilter = searchParamsHooks.get('roomType');
 
     // ===================== STYLES =====================
     const colors = {
@@ -552,7 +553,9 @@ export default function BookingPage() {
                         <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '28px', marginBottom: '24px', color: colors.text }}>
                             Select Your Room
                         </h2>
-                        {roomData.map((room) => (
+                        {roomData
+                            .filter(room => !roomTypeFilter || room.id === roomTypeFilter)
+                            .map((room) => (
                             <div key={room.id} className="room-card-modern">
                                 <div style={{ width: '100%', height: '180px', borderRadius: '12px', overflow: 'hidden' }}>
                                     <img src={room.image} alt={room.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />

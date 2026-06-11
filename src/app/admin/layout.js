@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import {
     LayoutDashboard, Package, CalendarCheck, Users, Settings,
@@ -23,19 +23,91 @@ const colors = {
 export default function AdminLayout({ children }) {
     const router = useRouter();
     const pathname = usePathname();
+    const [isVerified, setIsVerified] = useState(false);
+
+    // 1. Pengecekan sesi sessionStorage (Wajib login setiap buka tab/browser baru)
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            if (pathname === '/admin') {
+                setIsVerified(true);
+                return;
+            }
+
+            const sessionActive = sessionStorage.getItem("admin_session_active");
+            if (!sessionActive) {
+                const performLogout = async () => {
+                    await supabase.auth.signOut();
+                    localStorage.removeItem("isAdminAuthenticated");
+                    router.push("/admin");
+                };
+                performLogout();
+            } else {
+                setIsVerified(true);
+            }
+        }
+    }, [pathname, router]);
+
+    // 2. Idle Timer 5 menit (Jika tidak ada gerakan, paksa login ulang)
+    useEffect(() => {
+        if (typeof window === 'undefined' || pathname === '/admin' || !isVerified) return;
+
+        let idleTimer;
+        const TIMEOUT_DURATION = 5 * 60 * 1000; // 5 menit
+
+        const handleIdle = async () => {
+            alert("Sesi Anda telah berakhir karena tidak ada aktivitas selama 5 menit. Silakan login kembali.");
+            sessionStorage.removeItem("admin_session_active");
+            localStorage.removeItem("isAdminAuthenticated");
+            await supabase.auth.signOut();
+            router.push("/admin");
+        };
+
+        const resetTimer = () => {
+            if (idleTimer) clearTimeout(idleTimer);
+            idleTimer = setTimeout(handleIdle, TIMEOUT_DURATION);
+        };
+
+        const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
+
+        // Mulai timer pertama kali
+        resetTimer();
+
+        events.forEach(event => {
+            window.addEventListener(event, resetTimer, { passive: true });
+        });
+
+        return () => {
+            if (idleTimer) clearTimeout(idleTimer);
+            events.forEach(event => {
+                window.removeEventListener(event, resetTimer);
+            });
+        };
+    }, [pathname, router, isVerified]);
+
+    const handleLogout = async () => {
+        if (window.confirm("Apakah Anda yakin ingin keluar?")) {
+            await supabase.auth.signOut();
+            localStorage.removeItem("isAdminAuthenticated");
+            sessionStorage.removeItem("admin_session_active");
+            router.push("/admin");
+        }
+    };
 
     // If we are on the admin login page, don't show sidebar
     if (pathname === '/admin') {
         return <>{children}</>;
     }
 
-    const handleLogout = async () => {
-        if (window.confirm("Apakah Anda yakin ingin keluar?")) {
-            await supabase.auth.signOut();
-            localStorage.removeItem("isAdminAuthenticated");
-            router.push("/admin");
-        }
-    };
+    // Jika sedang dalam verifikasi sesi dan bukan halaman login, tampilkan loading agar tidak kedip (flash)
+    if (pathname !== '/admin' && !isVerified) {
+        return (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', backgroundColor: colors.bg }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontFamily: "'Inter', sans-serif", color: colors.textMuted }}>
+                    Verifikasi Sesi Admin...
+                </div>
+            </div>
+        );
+    }
 
     const menuItems = [
         { path: '/admin/dashboard', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },

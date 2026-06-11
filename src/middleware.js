@@ -27,8 +27,6 @@ export async function middleware(req) {
     const isAdminArea = url.startsWith('/admin');
     const isAdminLoginPage = url === '/admin';
 
-    // 1. TETAP PROTEKSI AREA ADMIN (Opsional)
-    // Jika Anda ingin menghapus total semua proteksi, hapus blok 'if (isAdminArea)' ini.
     if (isAdminArea) {
         if (!user && !isAdminLoginPage) {
             return NextResponse.redirect(new URL('/admin', req.url));
@@ -62,6 +60,6 @@ export async function middleware(req) {
 
 export const config = {
     matcher: [
-        '/((?!api|_next/static|_next/image|favicon.ico|.*\\.jpg|.*\\.png|.*\\.svg|.*\\.css|.*\\.js).*)',
+        '/((?!api|_next|favicon.ico|.*\\.jpg|.*\\.png|.*\\.svg|.*\\.css|.*\\.js).*)',
     ],
 };

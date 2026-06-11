@@ -248,6 +248,15 @@ export default function HomePage() {
         setTimeout(() => setShowFavoriteMessage(null), 3000);
     };
 
+    // 5. Book Room custom based on room type
+    const handleBookRoom = (roomType) => {
+        let url = `/booking-page/custom?roomType=${roomType}`;
+        if (searchData.checkIn && searchData.checkOut) {
+            url += `&checkIn=${searchData.checkIn}&checkOut=${searchData.checkOut}&guests=${searchData.guests}`;
+        }
+        router.push(url);
+    };
+
     // ===================== STYLES =====================
     const colors = {
         bg: '#FAFAF7',
@@ -770,7 +779,7 @@ export default function HomePage() {
                                         lineHeight: 1.8, marginBottom: '32px'
                                     }}>{room.desc}</p>
                                     <div
-                                        onClick={() => router.push(`/booking-page/custom`)}
+                                        onClick={() => handleBookRoom(room.id)}
                                         style={{
                                             fontFamily: "'Inter', sans-serif", fontSize: '14px', fontWeight: '600',
                                             color: colors.accent, display: 'inline-flex', alignItems: 'center', gap: '8px',
@@ -782,7 +791,7 @@ export default function HomePage() {
                                     </div>
                                 </div>
                                 <div
-                                    onClick={() => router.push(`/booking-page/custom`)}
+                                    onClick={() => handleBookRoom(room.id)}
                                     style={{
                                         flex: '0 0 30%', position: 'relative', height: '280px',
                                         borderRadius: '20px', overflow: 'hidden',
