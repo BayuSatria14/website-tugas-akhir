@@ -705,6 +705,12 @@ export default function HomePage() {
                     display: none;
                 }
 
+                #reviews {
+                    min-width: 0;
+                    width: 100%;
+                    overflow: hidden;
+                }
+
                 @media (max-width: 480px) {
                     .features-grid {
                         grid-template-columns: 1fr !important;
