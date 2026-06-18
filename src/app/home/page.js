@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import {
     Search, Users, Check, Star, Clock,
     ChevronRight, ChevronLeft, MapPin, Phone,
-    Mail, Instagram, Leaf, Heart, Sun, Coffee
+    Mail, Instagram, Leaf, Heart, Sun, Coffee,
+    Menu, X
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import WhatsAppButton from "@/components/WhatsAppButton";
@@ -56,6 +57,7 @@ export default function HomePage() {
     const [isLoading, setIsLoading] = useState(true);
     const [showFavoriteMessage, setShowFavoriteMessage] = useState(null);
     const [scrolled, setScrolled] = useState(false);
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     // Review States
     const [publishedReviews, setPublishedReviews] = useState([]);
@@ -475,15 +477,233 @@ export default function HomePage() {
                     opacity: 0.5;
                     cursor: pointer;
                 }
+
+                /* Responsive Styling Classes */
+                
+                /* Header / Navbar */
+                .header-wrapper {
+                    padding: 0 48px;
+                }
+                .nav-desktop {
+                    display: flex;
+                    gap: 36px;
+                }
+                .nav-mobile-toggle {
+                    display: none;
+                    background: transparent;
+                    border: none;
+                    cursor: pointer;
+                    color: inherit;
+                }
+                .mobile-nav-menu {
+                    display: none;
+                }
+
+                /* Search Bar */
+                .search-bar-container {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr 1fr auto;
+                    gap: 20px;
+                    align-items: end;
+                }
+
+                /* Features */
+                .features-grid {
+                    display: grid;
+                    grid-template-columns: repeat(4, 1fr);
+                    gap: 24px;
+                }
+
+                /* Accommodation / Rooms */
+                .room-list-container {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 48px;
+                }
+                .room-card-wrapper {
+                    display: flex;
+                    align-items: center;
+                    gap: 48px;
+                }
+                .room-text-section {
+                    flex: 1;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: center;
+                }
+                .room-image-section {
+                    flex: 0 0 35%;
+                    position: relative;
+                    height: 280px;
+                    border-radius: 20px;
+                    overflow: hidden;
+                    cursor: pointer;
+                }
+
+                /* About Section */
+                .about-grid-container {
+                    max-width: 1300px;
+                    margin: 0 auto;
+                    padding: 16px 20px 65px;
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 80px;
+                    align-items: center;
+                }
+
+                /* Contact Section */
+                .contact-grid-container {
+                    max-width: 1200px;
+                    margin: 0 auto;
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+                    gap: 64px;
+                    align-items: center;
+                }
+
+                /* Footer */
+                .footer-grid-container {
+                    max-width: 1100px;
+                    margin: 0 auto;
+                    display: grid;
+                    grid-template-columns: 2fr 1fr 1fr;
+                    gap: 60px;
+                }
+
+                /* Media Queries */
+                @media (max-width: 1024px) {
+                    .header-wrapper {
+                        padding: 0 24px !important;
+                    }
+                    .room-card-wrapper {
+                        gap: 24px !important;
+                    }
+                    .room-text-section {
+                        padding-left: 0 !important;
+                        padding-right: 0 !important;
+                    }
+                }
+
+                @media (max-width: 768px) {
+                    .nav-desktop {
+                        display: none !important;
+                    }
+                    .nav-mobile-toggle {
+                        display: block !important;
+                    }
+                    
+                    /* Mobile Menu Dropdown */
+                    .mobile-nav-menu {
+                        display: flex;
+                        flex-direction: column;
+                        position: absolute;
+                        top: 72px;
+                        left: 0;
+                        right: 0;
+                        background: rgba(255, 255, 255, 0.98);
+                        backdrop-filter: blur(12px);
+                        border-bottom: 1px solid #E8E5E0;
+                        padding: 24px;
+                        gap: 16px;
+                        z-index: 999;
+                        box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+                        opacity: 0;
+                        transform: translateY(-10px);
+                        pointer-events: none;
+                        transition: all 0.3s ease;
+                    }
+                    .mobile-nav-menu.open {
+                        opacity: 1;
+                        transform: translateY(0);
+                        pointer-events: auto;
+                    }
+                    /* Custom mobile link styling */
+                    .mobile-nav-menu .nav-link-custom {
+                        color: #1A1A1A !important;
+                        font-size: 16px;
+                        padding: 8px 0;
+                        border-bottom: 1px solid rgba(0,0,0,0.05);
+                        width: 100%;
+                    }
+                    .mobile-nav-menu .nav-link-custom:last-child {
+                        border-bottom: none;
+                    }
+                    
+                    /* Search Bar on Mobile */
+                    .search-bar-container {
+                        grid-template-columns: 1fr !important;
+                        gap: 16px !important;
+                        padding: 20px 24px !important;
+                    }
+                    
+                    /* Features grid on Mobile */
+                    .features-grid {
+                        grid-template-columns: repeat(2, 1fr) !important;
+                        gap: 16px !important;
+                    }
+                    
+                    /* Rooms grid on Mobile */
+                    .room-card-wrapper {
+                        flex-direction: column !important;
+                        gap: 24px !important;
+                    }
+                    .room-text-section {
+                        text-align: center !important;
+                    }
+                    .room-text-section h4 {
+                        font-size: 26px !important;
+                        margin-bottom: 16px !important;
+                    }
+                    .room-text-section p {
+                        margin-bottom: 20px !important;
+                    }
+                    .room-image-section {
+                        width: 100% !important;
+                        height: 240px !important;
+                        order: -1; /* Always put image above text on mobile */
+                    }
+                    
+                    /* About section on Mobile */
+                    .about-grid-container {
+                        grid-template-columns: 1fr !important;
+                        gap: 48px !important;
+                        padding: 16px 20px 48px !important;
+                    }
+                    .about-floating-img {
+                        width: 130px !important;
+                        height: 160px !important;
+                        bottom: -16px !important;
+                        left: -20px !important;
+                        border-width: 4px !important;
+                    }
+                    
+                    /* Contact & Reviews on Mobile */
+                    .contact-grid-container {
+                        grid-template-columns: 1fr !important;
+                        gap: 48px !important;
+                        padding: 48px 16px !important;
+                    }
+                    
+                    /* Footer on Mobile */
+                    .footer-grid-container {
+                        grid-template-columns: 1fr !important;
+                        gap: 32px !important;
+                    }
+                }
+                
+                @media (max-width: 480px) {
+                    .features-grid {
+                        grid-template-columns: 1fr !important;
+                    }
+                }
             `}</style>
 
             {/* ====== NAVBAR ====== */}
             <header
-                className={scrolled ? 'nav-scrolled' : ''}
+                className={`header-wrapper ${scrolled ? 'nav-scrolled' : ''}`}
                 style={{
                     position: 'fixed', top: 0, left: 0, right: 0,
                     zIndex: 1000,
-                    padding: '0 48px',
                     height: '72px',
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     background: scrolled ? 'rgba(255,255,255,0.97)' : 'transparent',
@@ -521,8 +741,8 @@ export default function HomePage() {
                     </div>
                 </div>
 
-                {/* Nav Links */}
-                <nav style={{ display: 'flex', gap: '36px' }}>
+                {/* Nav Links (Desktop) */}
+                <nav className="nav-desktop">
                     <a href="#home" className="nav-link-custom">Home</a>
                     <a href="#rooms" className="nav-link-custom">Rooms</a>
                     <a href="#packages" className="nav-link-custom">Packages</a>
@@ -530,6 +750,32 @@ export default function HomePage() {
                     <a href="#contact" className="nav-link-custom">Contact</a>
                     <a href="#reviews" className="nav-link-custom">Reviews</a>
                 </nav>
+
+                {/* Hamburger Toggle (Mobile) */}
+                <button
+                    className="nav-mobile-toggle"
+                    onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                    style={{
+                        color: scrolled ? colors.text : '#fff',
+                        padding: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'color 0.4s'
+                    }}
+                >
+                    {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+                </button>
+
+                {/* Mobile Menu Dropdown */}
+                <div className={`mobile-nav-menu ${isMobileMenuOpen ? 'open' : ''}`}>
+                    <a href="#home" className="nav-link-custom" onClick={() => setIsMobileMenuOpen(false)}>Home</a>
+                    <a href="#rooms" className="nav-link-custom" onClick={() => setIsMobileMenuOpen(false)}>Rooms</a>
+                    <a href="#packages" className="nav-link-custom" onClick={() => setIsMobileMenuOpen(false)}>Packages</a>
+                    <a href="#about" className="nav-link-custom" onClick={() => setIsMobileMenuOpen(false)}>About</a>
+                    <a href="#contact" className="nav-link-custom" onClick={() => setIsMobileMenuOpen(false)}>Contact</a>
+                    <a href="#reviews" className="nav-link-custom" onClick={() => setIsMobileMenuOpen(false)}>Reviews</a>
+                </div>
 
             </header>
 
@@ -615,15 +861,11 @@ export default function HomePage() {
                 position: 'relative', zIndex: 20,
                 animation: 'slideIn 0.8s ease 0.3s both',
             }}>
-                <div style={{
+                <div className="search-bar-container" style={{
                     background: '#fff',
                     borderRadius: '16px',
                     boxShadow: '0 8px 40px rgba(0,0,0,0.08)',
                     padding: '24px 32px',
-                    display: 'grid',
-                    gridTemplateColumns: '1fr 1fr 1fr auto',
-                    gap: '20px',
-                    alignItems: 'end',
                     border: `1px solid ${colors.border}`,
                 }}>
                     <div>
@@ -700,9 +942,7 @@ export default function HomePage() {
                 <section style={{
                     maxWidth: '1100px', margin: '32px auto 0', padding: '0 24px',
                 }}>
-                    <div style={{
-                        display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '24px',
-                    }}>
+                    <div className="features-grid">
                         {features.map((feat, idx) => (
                             <div key={idx} style={{
                                 display: 'flex', alignItems: 'center', gap: '14px',
@@ -747,25 +987,19 @@ export default function HomePage() {
                     </div>
                 </FadeInSection>
 
-                <div style={{
-                    display: 'flex', flexDirection: 'column', gap: '48px'
-                }}>
+                <div className="room-list-container">
                     {[
                         { id: 'deluxe', name: 'Deluxe Rooms', size: '32sqm', desc: 'Rasakan ketenangan paripurna di Deluxe Room kami. Kamar luas ini dirancang khusus dengan sentuhan estetika Bali otentik, memadukan kenyamanan modern dan keanggunan tradisional. Nikmati pagi yang damai dengan pemandangan taman tropis yang rimbun langsung dari teras pribadi Anda, memberikan harmoni dan kesegaran untuk memulai hari.', img: 'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=600' },
                         { id: 'suite', name: 'Suite Rooms', size: '38sqm', desc: 'Tingkatkan pengalaman menginap Anda ke level selanjutnya di Suite Room kami. Menawarkan ruang yang lebih lapang dengan interior mewah yang memanjakan. Bersantailah sambil memandangi hamparan sawah hijau yang menyejukkan mata. Suite ini adalah tempat pelarian sempurna bagi Anda yang mencari privasi dan kenyamanan absolut.', img: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=600' }
                     ].map((room, i) => (
                         <FadeInSection key={i}>
                             <div
-                                className={room.id === 'deluxe' ? 'animate-from-right' : 'animate-from-left'}
+                                className={`room-card-wrapper ${room.id === 'deluxe' ? 'animate-from-right' : 'animate-from-left'}`}
                                 style={{
-                                    display: 'flex',
                                     flexDirection: room.id === 'deluxe' ? 'row' : 'row-reverse',
-                                    alignItems: 'center',
-                                    gap: '48px',
                                 }}
                             >
-                                <div style={{
-                                    flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center',
+                                <div className="room-text-section" style={{
                                     paddingLeft: room.id === 'deluxe' ? '400px' : '0',
                                     paddingRight: room.id === 'suite' ? '400px' : '0',
                                     textAlign: room.id === 'deluxe' ? 'right' : 'left'
@@ -791,12 +1025,8 @@ export default function HomePage() {
                                     </div>
                                 </div>
                                 <div
+                                    className="room-image-section"
                                     onClick={() => handleBookRoom(room.id)}
-                                    style={{
-                                        flex: '0 0 30%', position: 'relative', height: '280px',
-                                        borderRadius: '20px', overflow: 'hidden',
-                                        cursor: 'pointer'
-                                    }}
                                 >
                                     <img
                                         src={room.img}
@@ -974,10 +1204,7 @@ export default function HomePage() {
                     borderTop: `1px solid ${colors.border}`,
                     borderBottom: `1px solid ${colors.border}`,
                 }}>
-                    <div style={{
-                        maxWidth: '1300px', margin: '0 auto', padding: '16px 20px 65px',
-                        display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '80px', alignItems: 'center',
-                    }}>
+                    <div className="about-grid-container">
                         {/* Text */}
                         <div className="about-animate-left">
                             <h3 style={{
@@ -1060,11 +1287,7 @@ export default function HomePage() {
                     background: colors.dark, color: '#fff',
                     padding: '96px 24px',
                 }}>
-                    <div style={{
-                        maxWidth: '1200px', margin: '0 auto',
-                        display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
-                        gap: '64px', alignItems: 'center'
-                    }}>
+                    <div className="contact-grid-container">
 
                         {/* LEFT: Contact CTA */}
                         <div>
@@ -1251,10 +1474,7 @@ export default function HomePage() {
                 background: '#111111', color: '#fff',
                 padding: '64px 24px 32px',
             }}>
-                <div style={{
-                    maxWidth: '1100px', margin: '0 auto',
-                    display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '60px',
-                }}>
+                <div className="footer-grid-container">
                     <div>
                         <h4 style={{
                             fontFamily: "'Playfair Display', serif",
