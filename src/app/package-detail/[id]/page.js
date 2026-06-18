@@ -103,6 +103,33 @@ export default function PackageDetail() {
                     to { opacity: 1; transform: translateY(0); }
                 }
 
+                .package-main-grid {
+                    display: grid;
+                    grid-template-columns: repeat(2, 1fr);
+                    gap: 64px;
+                    align-items: start;
+                    margin-bottom: 40px;
+                }
+                .package-image-container {
+                    position: relative;
+                    border-radius: 24px;
+                    overflow: hidden;
+                    box-shadow: 0 24px 50px rgba(0,0,0,0.06);
+                }
+                .package-image-container img {
+                    width: 100%;
+                    height: auto;
+                    min-height: 500px;
+                    max-height: 600px;
+                    object-fit: cover;
+                    display: block;
+                }
+                .itinerary-section-wrapper {
+                    margin-top: 40px;
+                    padding-top: 40px;
+                    border-top: 1px solid #E8E5E0;
+                }
+
                 .itinerary-card {
                     background: #fff;
                     border: 1px solid #E8E5E0;
@@ -131,6 +158,22 @@ export default function PackageDetail() {
                 }
                 .itinerary-scroll-container::-webkit-scrollbar-thumb:hover {
                     background: #8B7355;
+                }
+
+                @media (max-width: 992px) {
+                    .package-main-grid {
+                        grid-template-columns: 1fr;
+                        gap: 32px;
+                        margin-bottom: 24px;
+                    }
+                    .package-image-container img {
+                        min-height: unset;
+                        height: 320px;
+                    }
+                    .itinerary-section-wrapper {
+                        margin-top: 24px;
+                        padding-top: 24px;
+                    }
                 }
             `}</style>
 
@@ -165,19 +208,12 @@ export default function PackageDetail() {
                 animation: 'fadeIn 0.8s ease'
             }}>
                 {/* ====== MAIN GRID (Image + Info) ====== */}
-                <div style={{
-                    display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
-                    gap: '64px', alignItems: 'start', marginBottom: '80px'
-                }}>
+                <div className="package-main-grid">
                     {/* Image Section */}
-                    <div style={{
-                        position: 'relative', borderRadius: '24px', overflow: 'hidden',
-                        boxShadow: '0 24px 50px rgba(0,0,0,0.06)'
-                    }}>
+                    <div className="package-image-container">
                         <img
                             src={selectedPackage.image_url}
                             alt={selectedPackage.title}
-                            style={{ width: '100%', height: 'auto', minHeight: '500px', objectFit: 'cover', display: 'block' }}
                         />
                     </div>
 
@@ -302,7 +338,7 @@ export default function PackageDetail() {
 
                 {/* ====== ITINERARY SECTION ====== */}
                 {selectedPackage.itinerary && selectedPackage.itinerary.length > 0 && (
-                    <div style={{ marginTop: '80px', paddingTop: '80px', borderTop: `1px solid ${colors.border}` }}>
+                    <div className="itinerary-section-wrapper">
                         <div style={{ marginBottom: '40px' }}>
                             <p style={{
                                 fontFamily: "'Inter', sans-serif", fontSize: '12px', fontWeight: '600',

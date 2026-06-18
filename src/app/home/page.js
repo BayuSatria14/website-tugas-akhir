@@ -691,6 +691,20 @@ export default function HomePage() {
                     }
                 }
                 
+                .reviews-scroll-container {
+                    display: flex;
+                    overflow-x: auto;
+                    gap: 20px;
+                    padding-bottom: 16px;
+                    scroll-snap-type: x mandatory;
+                    -webkit-overflow-scrolling: touch;
+                    -ms-overflow-style: none;
+                    scrollbar-width: none;
+                }
+                .reviews-scroll-container::-webkit-scrollbar {
+                    display: none;
+                }
+
                 @media (max-width: 480px) {
                     .features-grid {
                         grid-template-columns: 1fr !important;
@@ -1394,10 +1408,7 @@ export default function HomePage() {
 
                             <div
                                 ref={reviewsScrollRef}
-                                style={{
-                                    display: 'flex', overflowX: 'auto', gap: '20px', paddingBottom: '16px',
-                                    scrollSnapType: 'x mandatory', msOverflowStyle: 'none', scrollbarWidth: 'none',
-                                }}
+                                className="reviews-scroll-container"
                             >
                                 {publishedReviews.length > 0 ? (
                                     publishedReviews.map((rev) => (
