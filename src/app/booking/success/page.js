@@ -24,9 +24,9 @@ function SuccessContent() {
                             status: 'PAID'
                         })
                     });
-                    console.log("Webhook simulation triggered successfully.");
+                    console.log("Local webhook simulation triggered successfully.");
                 } catch (err) {
-                    console.error("Failed to trigger webhook simulation:", err);
+                    console.error("Failed to trigger local webhook simulation:", err);
                 }
             }
         };
