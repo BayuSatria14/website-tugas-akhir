@@ -54,26 +54,7 @@ export async function POST(request) {
 
             if (error) throw error;
 
-            // 2. Logika Jadwal (Hanya jika booking memiliki package_name)
-            let sectionJadwal = "";
-            if (res.package_name && res.itinerary && Array.isArray(res.itinerary)) {
-                sectionJadwal = `
-                    <div style="margin-top: 25px; padding: 15px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
-                        <h3 style="color: #4f46e5; margin-top: 0;">🗓️ Jadwal Kegiatan Paket: ${res.package_name}</h3>
-                        <table width="100%" style="border-collapse: collapse; font-size: 14px;">
-                            ${res.itinerary.map(item => `
-                                <tr>
-                                    <td style="padding: 8px 0; border-bottom: 1px solid #e2e8f0; font-weight: bold; width: 80px;">Hari ${item.day}</td>
-                                    <td style="padding: 8px 0; border-bottom: 1px solid #e2e8f0;">${item.activities}</td>
-                                </tr>
-                            `).join('')}
-                        </table>
-                        <p style="font-size: 12px; color: #64748b; margin-top: 10px;">*Jadwal dapat berubah sewaktu-waktu sesuai koordinasi dengan admin.</p>
-                    </div>
-                `;
-            }
-
-            // 3. Template HTML Struk/Nota
+            // 2. Template HTML Struk/Nota
             const htmlEmail = `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #e2e8f0; padding: 25px; color: #1e293b;">
                     <div style="text-align: center; margin-bottom: 20px;">
@@ -93,7 +74,24 @@ export async function POST(request) {
                         </td></tr>
                     </table>
 
-                    ${sectionJadwal}
+                    ${res.package_name && res.itinerary && Array.isArray(res.itinerary) ? `
+                    <div style="margin-top: 30px; border-top: 2px solid #e2e8f0; padding-top: 20px;">
+                        <h3 style="color: #4f46e5; margin: 0 0 10px 0;">📋 Jadwal Kegiatan Paket: ${res.package_name}</h3>
+                        <table width="100%" cellpadding="10" style="margin: 15px 0; font-size: 14px; border-collapse: collapse; border: 1px solid #ddd;">
+                            <tr style="background: #f8fafc;">
+                                <th style="border: 1px solid #ddd; text-align: center; width: 80px;">Hari</th>
+                                <th style="border: 1px solid #ddd; text-align: left;">Aktivitas</th>
+                            </tr>
+                            ${res.itinerary.map(item => `
+                                <tr>
+                                    <td style="border: 1px solid #ddd; text-align: center; font-weight: bold;">Hari ${item.day}</td>
+                                    <td style="border: 1px solid #ddd;">${item.activities}</td>
+                                </tr>
+                            `).join('')}
+                        </table>
+                        <p style="font-size: 12px; color: #94a3b8; font-style: italic;">*Jadwal dapat berubah sewaktu-waktu sesuai koordinasi dengan admin.</p>
+                    </div>
+                    ` : ''}
 
                     <div style="margin-top: 30px; text-align: center; font-size: 12px; color: #94a3b8;">
                         <p>The Dukuh Retreat - Wellness & Healing Resort</p>
@@ -102,10 +100,10 @@ export async function POST(request) {
                 </div>
             `;
 
-            // 4. Kirim Email ke User
+            // 3. Kirim Email ke User
             await sendEmail(res.guests.email, `Struk Pembayaran - ${res.external_id}`, htmlEmail);
 
-            // 5. Kirim Email Notifikasi ke Admin
+            // 4. Kirim Email Notifikasi ke Admin
             const adminEmail = process.env.EMAIL_USER || 'satriamaryana15@gmail.com';
             const htmlAdminEmail = `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #e2e8f0; padding: 25px; color: #1e293b;">

@@ -9,7 +9,14 @@ export async function POST(request) {
         const { externalId, amount, payerEmail, guestInfo, packageName } = body;
 
         // ================================================================
-        // 1. LOGIKA AMBIL ITINERARY (Jika yang dipesan adalah Paket)
+        // 1. VALIDASI WAJIB PAKET
+        // ================================================================
+        if (!packageName) {
+            return NextResponse.json({ success: false, error: 'Package Name is required for booking.' }, { status: 400 });
+        }
+
+        // ================================================================
+        // 2. LOGIKA AMBIL ITINERARY
         // ================================================================
         let fetchedItinerary = null;
         if (packageName) {

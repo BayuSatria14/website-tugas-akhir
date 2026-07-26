@@ -51,7 +51,7 @@ export default function GuestManagementPage() {
     };
 
     // FUNGSI YANG BARU ANDA BERIKAN (SUDAH TERINTEGRASI)
-    const handleUpdateItinerary = async (resId, newItinerary, guestEmail) => {
+    const handleUpdateItinerary = async (resId, newItinerary, guestEmail, externalId) => {
         if (!window.confirm("Simpan perubahan jadwal dan kirim email ke tamu?")) return;
 
         setIsUpdating(true);
@@ -69,12 +69,17 @@ export default function GuestManagementPage() {
                 <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #eee;">
                     <h3 style="color: #4f46e5;">📢 Pembaruan Jadwal Kegiatan</h3>
                     <p>Halo, terdapat perubahan pada jadwal kegiatan untuk kunjungan Anda di <b>The Dukuh Retreat</b>. Berikut jadwal terbaru Anda:</p>
-                    <table width="100%" border="1" cellpadding="10" style="border-collapse: collapse; border: 1px solid #ddd;">
+                    <table width="100%" border="1" cellpadding="10" style="border-collapse: collapse; border: 1px solid #ddd; margin-bottom: 20px;">
                         <tr style="background: #f8fafc;"><th>Hari</th><th>Aktivitas</th></tr>
                         ${newItinerary.map(i => `
                             <tr><td align="center"><b>${i.day}</b></td><td>${i.activities}</td></tr>
                         `).join('')}
                     </table>
+                    
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="${window.location.origin}/my-schedule/${externalId}" style="background-color: #8B7355; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Lihat & Pantau Jadwal Secara Real-time</a>
+                    </div>
+                    
                     <p style="margin-top: 20px;">Jika ada pertanyaan, silakan hubungi kami melalui WhatsApp.</p>
                 </div>
             `;
@@ -187,7 +192,7 @@ export default function GuestManagementPage() {
                                             />
                                         </div>
                                     ))}
-                                    <button className="save-send-btn" disabled={isUpdating} onClick={() => handleUpdateItinerary(selectedGuest.id, selectedGuest.itinerary, selectedGuest.guests?.email)}>
+                                    <button className="save-send-btn" disabled={isUpdating} onClick={() => handleUpdateItinerary(selectedGuest.id, selectedGuest.itinerary, selectedGuest.guests?.email, selectedGuest.external_id)}>
                                         {isUpdating ? "Mengirim..." : <><Send size={18} /> Simpan & Kirim Update</>}
                                     </button>
                                 </div>

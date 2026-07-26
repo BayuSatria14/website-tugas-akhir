@@ -17,17 +17,6 @@ const roomData = [
         availableRooms: 2,
         image: "https://images.unsplash.com/photo-1590490360182-c33d57733427?w=400",
         description: "Stay in an individual unique wooden house with stage structure so-called Indonesian R..."
-    },
-    {
-        id: "suite",
-        name: "Suite",
-        size: "35m²",
-        pax: 2,
-        bed: "1 twin-king/queen",
-        price: 800000,
-        availableRooms: 1,
-        image: "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=400",
-        description: "Stay in an individual unique wooden house with stage structure so-called Indonesian R..."
     }
 ];
 
@@ -36,7 +25,6 @@ export default function BookingPage() {
     const params = useParams();
     const searchParamsHooks = useSearchParams();
     const id = params?.id;
-    const roomTypeFilter = searchParamsHooks.get('roomType');
 
     // ===================== STYLES =====================
     const colors = {
@@ -66,24 +54,27 @@ export default function BookingPage() {
     const [appliedCheckIn, setAppliedCheckIn] = useState("");
     const [appliedCheckOut, setAppliedCheckOut] = useState("");
 
-    // Fetch Package Data dari DB jika ID != custom
+    // Fetch Package Data dari DB
     useEffect(() => {
         const fetchPackage = async () => {
-            if (id && id !== 'custom') {
-                const { data, error } = await supabase
-                    .from('packages')
-                    .select('*')
-                    .eq('id', id)
-                    .single();
-                if (error) {
-                    console.error("Error fetching package:", error);
-                } else {
-                    setDbPackage(data);
-                }
+            if (!id || id === 'custom') {
+                router.replace('/home');
+                return;
+            }
+
+            const { data, error } = await supabase
+                .from('packages')
+                .select('*')
+                .eq('id', id)
+                .single();
+            if (error) {
+                console.error("Error fetching package:", error);
+            } else {
+                setDbPackage(data);
             }
         };
         fetchPackage();
-    }, [id]);
+    }, [id, router]);
 
     // Effect untuk membaca Query Params dari URL (jika ada)
     useEffect(() => {
@@ -144,7 +135,7 @@ export default function BookingPage() {
             }
         } else {
             if (!id || id === 'custom') {
-                // Do nothing
+                // Should redirect via other useEffect
             } else {
                 const tomorrow = new Date();
                 tomorrow.setDate(tomorrow.getDate() + 1);
@@ -547,15 +538,13 @@ export default function BookingPage() {
                     </div>
                 </div>
 
-                {/* 2. ROOM LISTING */}
+                {/* 2. AVAILABLE ROOMS LIST */}
                 {showRooms && !showGuestForm && (
                     <div style={{ animation: 'fadeIn 0.6s ease' }}>
                         <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '28px', marginBottom: '24px', color: colors.text }}>
                             Select Your Room
                         </h2>
-                        {roomData
-                            .filter(room => !roomTypeFilter || room.id === roomTypeFilter)
-                            .map((room) => (
+                        {roomData.map((room) => (
                             <div key={room.id} className="room-card-modern">
                                 <div style={{ width: '100%', height: '180px', borderRadius: '12px', overflow: 'hidden' }}>
                                     <img src={room.image} alt={room.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -667,8 +656,8 @@ export default function BookingPage() {
                                     </select>
                                 </div>
                                 <div>
-                                    <label style={{ fontSize: '12px', fontWeight: '600', color: colors.textMuted, marginBottom: '8px', display: 'block' }}>Mobile Phone *</label>
-                                    <input type="text" className="booking-input" required value={guestInfo.mobile} onChange={handleMobileChange} />
+                                    <label style={{ fontSize: '12px', fontWeight: '600', color: colors.textMuted, marginBottom: '8px', display: 'block' }}>Nomor Telepon Aktif *</label>
+                                    <input type="text" className="booking-input" required value={guestInfo.mobile} onChange={handleMobileChange} placeholder="+62812..." />
                                 </div>
                                 <div>
                                     <label style={{ fontSize: '12px', fontWeight: '600', color: colors.textMuted, marginBottom: '8px', display: 'block' }}>Email *</label>

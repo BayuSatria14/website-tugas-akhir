@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
-    Search, Users, Check, Star, Clock,
+    Users, Check, Star, Clock,
     ChevronRight, ChevronLeft, MapPin, Phone,
     Mail, Instagram, Leaf, Heart, Sun, Coffee,
     Menu, X
@@ -47,11 +47,6 @@ export default function HomePage() {
     const scrollRef = useRef(null);
 
     // States
-    const [searchData, setSearchData] = useState({
-        checkIn: "",
-        checkOut: "",
-        guests: 1
-    });
     const [packages, setPackages] = useState([]);
     const [mostBookedId, setMostBookedId] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -228,35 +223,11 @@ export default function HomePage() {
         }
     };
 
-    // 3. Logika Perubahan Tanggal (Auto Checkout +1 hari)
-    const handleCheckInChange = (e) => {
-        const dateIn = e.target.value;
-        let dateOut = "";
-        if (dateIn) {
-            const [y, m, d] = dateIn.split('-').map(Number);
-            const nextDay = new Date(y, m - 1, d + 1);
-            const yy = nextDay.getFullYear();
-            const mm = String(nextDay.getMonth() + 1).padStart(2, '0');
-            const dd = String(nextDay.getDate()).padStart(2, '0');
-            dateOut = `${yy}-${mm}-${dd}`;
-        }
-        setSearchData({ ...searchData, checkIn: dateIn, checkOut: dateOut });
-    };
-
-    // 4. Pesan Favorit saat Bintang di klik
+    // 3. Pesan Favorit saat Bintang di klik
     const handleFavoriteClick = (e, packageId) => {
         e.stopPropagation();
         setShowFavoriteMessage(packageId);
         setTimeout(() => setShowFavoriteMessage(null), 3000);
-    };
-
-    // 5. Book Room custom based on room type
-    const handleBookRoom = (roomType) => {
-        let url = `/booking-page/custom?roomType=${roomType}`;
-        if (searchData.checkIn && searchData.checkOut) {
-            url += `&checkIn=${searchData.checkIn}&checkOut=${searchData.checkOut}&guests=${searchData.guests}`;
-        }
-        router.push(url);
     };
 
     // ===================== STYLES =====================
@@ -453,16 +424,6 @@ export default function HomePage() {
                     border-color: #8B7355;
                 }
 
-                .search-input-home {
-                    width: 100%;
-                    border: none;
-                    outline: none;
-                    font-family: 'Inter', sans-serif;
-                    font-size: 14px;
-                    color: #1A1A1A;
-                    background: transparent;
-                    cursor: pointer;
-                }
 
                 .footer-link {
                     color: #9CA3AF;
@@ -473,10 +434,6 @@ export default function HomePage() {
                 }
                 .footer-link:hover { color: #FFFFFF; }
 
-                input[type="date"]::-webkit-calendar-picker-indicator {
-                    opacity: 0.5;
-                    cursor: pointer;
-                }
 
                 /* Responsive Styling Classes */
                 
@@ -499,14 +456,6 @@ export default function HomePage() {
                     display: none;
                 }
 
-                /* Search Bar */
-                .search-bar-container {
-                    display: grid;
-                    grid-template-columns: 1fr 1fr 1fr auto;
-                    gap: 20px;
-                    align-items: end;
-                }
-
                 /* Features */
                 .features-grid {
                     display: grid;
@@ -514,31 +463,6 @@ export default function HomePage() {
                     gap: 24px;
                 }
 
-                /* Accommodation / Rooms */
-                .room-list-container {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 48px;
-                }
-                .room-card-wrapper {
-                    display: flex;
-                    align-items: center;
-                    gap: 48px;
-                }
-                .room-text-section {
-                    flex: 1;
-                    display: flex;
-                    flex-direction: column;
-                    justify-content: center;
-                }
-                .room-image-section {
-                    flex: 0 0 35%;
-                    position: relative;
-                    height: 280px;
-                    border-radius: 20px;
-                    overflow: hidden;
-                    cursor: pointer;
-                }
 
                 /* About Section */
                 .about-grid-container {
@@ -574,13 +498,6 @@ export default function HomePage() {
                 @media (max-width: 1024px) {
                     .header-wrapper {
                         padding: 0 24px !important;
-                    }
-                    .room-card-wrapper {
-                        gap: 24px !important;
-                    }
-                    .room-text-section {
-                        padding-left: 0 !important;
-                        padding-right: 0 !important;
                     }
                 }
 
@@ -629,39 +546,6 @@ export default function HomePage() {
                         border-bottom: none;
                     }
                     
-                    /* Search Bar on Mobile */
-                    .search-bar-container {
-                        grid-template-columns: 1fr !important;
-                        gap: 16px !important;
-                        padding: 20px 24px !important;
-                    }
-                    
-                    /* Features grid on Mobile */
-                    .features-grid {
-                        grid-template-columns: repeat(2, 1fr) !important;
-                        gap: 16px !important;
-                    }
-                    
-                    /* Rooms grid on Mobile */
-                    .room-card-wrapper {
-                        flex-direction: column !important;
-                        gap: 24px !important;
-                    }
-                    .room-text-section {
-                        text-align: center !important;
-                    }
-                    .room-text-section h4 {
-                        font-size: 26px !important;
-                        margin-bottom: 16px !important;
-                    }
-                    .room-text-section p {
-                        margin-bottom: 20px !important;
-                    }
-                    .room-image-section {
-                        width: 100% !important;
-                        height: 240px !important;
-                        order: -1; /* Always put image above text on mobile */
-                    }
                     
                     /* About section on Mobile */
                     .about-grid-container {
@@ -764,7 +648,6 @@ export default function HomePage() {
                 {/* Nav Links (Desktop) */}
                 <nav className="nav-desktop">
                     <a href="#home" className="nav-link-custom">Home</a>
-                    <a href="#rooms" className="nav-link-custom">Rooms</a>
                     <a href="#packages" className="nav-link-custom">Packages</a>
                     <a href="#about" className="nav-link-custom">About</a>
                     <a href="#contact" className="nav-link-custom">Contact</a>
@@ -790,7 +673,6 @@ export default function HomePage() {
                 {/* Mobile Menu Dropdown */}
                 <div className={`mobile-nav-menu ${isMobileMenuOpen ? 'open' : ''}`}>
                     <a href="#home" className="nav-link-custom" onClick={() => setIsMobileMenuOpen(false)}>Home</a>
-                    <a href="#rooms" className="nav-link-custom" onClick={() => setIsMobileMenuOpen(false)}>Rooms</a>
                     <a href="#packages" className="nav-link-custom" onClick={() => setIsMobileMenuOpen(false)}>Packages</a>
                     <a href="#about" className="nav-link-custom" onClick={() => setIsMobileMenuOpen(false)}>About</a>
                     <a href="#contact" className="nav-link-custom" onClick={() => setIsMobileMenuOpen(false)}>Contact</a>
@@ -872,213 +754,42 @@ export default function HomePage() {
                             />
                         ))}
                     </div>
-                </div>
-            </section>
 
-            {/* ====== SEARCH BAR (floating below hero) ====== */}
-            <div style={{
-                maxWidth: '900px', margin: '-48px auto 0', padding: '0 24px',
-                position: 'relative', zIndex: 20,
-                animation: 'slideIn 0.8s ease 0.3s both',
-            }}>
-                <div className="search-bar-container" style={{
-                    background: '#fff',
-                    borderRadius: '16px',
-                    boxShadow: '0 8px 40px rgba(0,0,0,0.08)',
-                    padding: '24px 32px',
-                    border: `1px solid ${colors.border}`,
-                }}>
-                    <div>
-                        <label style={{
-                            fontFamily: "'Inter', sans-serif", fontSize: '11px',
-                            fontWeight: '600', letterSpacing: '1px', textTransform: 'uppercase',
-                            color: colors.textMuted, marginBottom: '8px', display: 'block',
-                        }}>Check In</label>
-                        <input
-                            type="date"
-                            className="search-input-home"
-                            value={searchData.checkIn}
-                            onChange={handleCheckInChange}
-                            style={{ padding: '8px 0', borderBottom: `1px solid ${colors.border}` }}
-                        />
-                    </div>
-                    <div>
-                        <label style={{
-                            fontFamily: "'Inter', sans-serif", fontSize: '11px',
-                            fontWeight: '600', letterSpacing: '1px', textTransform: 'uppercase',
-                            color: colors.textMuted, marginBottom: '8px', display: 'block',
-                        }}>Check Out</label>
-                        <input
-                            type="date"
-                            className="search-input-home"
-                            value={searchData.checkOut}
-                            onChange={(e) => setSearchData({ ...searchData, checkOut: e.target.value })}
-                            style={{ padding: '8px 0', borderBottom: `1px solid ${colors.border}` }}
-                        />
-                    </div>
-                    <div>
-                        <label style={{
-                            fontFamily: "'Inter', sans-serif", fontSize: '11px',
-                            fontWeight: '600', letterSpacing: '1px', textTransform: 'uppercase',
-                            color: colors.textMuted, marginBottom: '8px', display: 'block',
-                        }}>Guests</label>
-                        <select
-                            className="search-input-home"
-                            value={searchData.guests}
-                            onChange={(e) => setSearchData({ ...searchData, guests: e.target.value })}
-                            style={{ padding: '8px 0', borderBottom: `1px solid ${colors.border}` }}
-                        >
-                            <option value="1">1 Guest</option>
-                            <option value="2">2 Guests</option>
-                        </select>
-                    </div>
+                    {/* Hero CTA Button */}
                     <button
-                        onClick={() => {
-                            if (!searchData.checkIn || !searchData.checkOut) {
-                                alert("Harap isi tanggal Check In dan Check Out terlebih dahulu!");
-                            } else {
-                                router.push(`/booking-page/custom?checkIn=${searchData.checkIn}&checkOut=${searchData.checkOut}&guests=${searchData.guests}`);
-                            }
-                        }}
+                        onClick={() => document.getElementById('packages')?.scrollIntoView({ behavior: 'smooth' })}
                         style={{
+                            marginTop: '32px',
                             background: colors.accent,
-                            color: '#fff', border: 'none',
-                            padding: '14px 32px', borderRadius: '8px',
-                            fontFamily: "'Inter', sans-serif", fontSize: '14px', fontWeight: '600',
-                            cursor: 'pointer', transition: 'background 0.3s',
-                            display: 'flex', alignItems: 'center', gap: '8px',
+                            color: '#fff',
+                            border: 'none',
+                            padding: '16px 40px',
+                            borderRadius: '8px',
+                            fontFamily: "'Inter', sans-serif",
+                            fontSize: '15px',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            transition: 'all 0.3s',
+                            letterSpacing: '0.5px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '8px',
                         }}
-                        onMouseEnter={e => e.target.style.background = colors.accentHover}
-                        onMouseLeave={e => e.target.style.background = colors.accent}
+                        onMouseEnter={e => { e.target.style.background = colors.accentHover; e.target.style.transform = 'translateY(-2px)'; }}
+                        onMouseLeave={e => { e.target.style.background = colors.accent; e.target.style.transform = 'translateY(0)'; }}
                     >
-                        <Search size={16} />
-                        Search
+                        Explore Our Packages <ChevronRight size={16} />
                     </button>
                 </div>
-            </div>
-
-            {/* ====== FEATURES STRIP ====== */}
-            <FadeInSection>
-                <section style={{
-                    maxWidth: '1100px', margin: '32px auto 0', padding: '0 24px',
-                }}>
-                    <div className="features-grid">
-                        {features.map((feat, idx) => (
-                            <div key={idx} style={{
-                                display: 'flex', alignItems: 'center', gap: '14px',
-                                padding: '20px 24px',
-                                background: '#fff', borderRadius: '12px',
-                                border: `1px solid ${colors.border}`,
-                                animation: `slideIn 0.6s ease ${0.1 * idx}s both`,
-                            }}>
-                                <div style={{ color: colors.accent, flexShrink: 0 }}>
-                                    {feat.icon}
-                                </div>
-                                <span style={{
-                                    fontFamily: "'Inter', sans-serif", fontSize: '13px',
-                                    fontWeight: '500', color: colors.text,
-                                }}>{feat.text}</span>
-                            </div>
-                        ))}
-                    </div>
-                </section>
-            </FadeInSection>
-            {/* ====== ACCOMMODATION SECTION ====== */}
-            <section id="rooms" style={{
-                maxWidth: '1400px', margin: '0 auto',
-                padding: '40px 40px 40px',
-            }}>
-                <FadeInSection>
-                    <div style={{ textAlign: 'center', marginBottom: '56px' }}>
-                        <p style={{
-                            fontFamily: "'Inter', sans-serif", fontSize: '12px',
-                            fontWeight: '600', letterSpacing: '3px', textTransform: 'uppercase',
-                            color: colors.accent, marginBottom: '12px',
-                        }}>Our Rooms </p>
-                        <h3 style={{
-                            fontFamily: "'Playfair Display', serif",
-                            fontSize: '38px', fontWeight: '600', color: colors.text,
-                            marginBottom: '16px',
-                        }}>Stay With Us</h3>
-                        <p style={{
-                            fontFamily: "'Inter', sans-serif", fontSize: '15px',
-                            color: colors.textMuted, maxWidth: '600px', margin: '0 auto', lineHeight: 1.7,
-                        }}>Stay in an individual unique wooden house with stage structure so-called Indonesian Rumah Panggung where we sleep tight with the sounds of tropical nature and breathe in clean greenery ocean breeze air.</p>
-                    </div>
-                </FadeInSection>
-
-                <div className="room-list-container">
-                    {[
-                        { id: 'deluxe', name: 'Deluxe Rooms', size: '32sqm', desc: 'Rasakan ketenangan paripurna di Deluxe Room kami. Kamar luas ini dirancang khusus dengan sentuhan estetika Bali otentik, memadukan kenyamanan modern dan keanggunan tradisional. Nikmati pagi yang damai dengan pemandangan taman tropis yang rimbun langsung dari teras pribadi Anda, memberikan harmoni dan kesegaran untuk memulai hari.', img: 'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=600' },
-                        { id: 'suite', name: 'Suite Rooms', size: '38sqm', desc: 'Tingkatkan pengalaman menginap Anda ke level selanjutnya di Suite Room kami. Menawarkan ruang yang lebih lapang dengan interior mewah yang memanjakan. Bersantailah sambil memandangi hamparan sawah hijau yang menyejukkan mata. Suite ini adalah tempat pelarian sempurna bagi Anda yang mencari privasi dan kenyamanan absolut.', img: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=600' }
-                    ].map((room, i) => (
-                        <FadeInSection key={i}>
-                            <div
-                                className={`room-card-wrapper ${room.id === 'deluxe' ? 'animate-from-right' : 'animate-from-left'}`}
-                                style={{
-                                    flexDirection: room.id === 'deluxe' ? 'row' : 'row-reverse',
-                                }}
-                            >
-                                <div className="room-text-section" style={{
-                                    paddingLeft: room.id === 'deluxe' ? '400px' : '0',
-                                    paddingRight: room.id === 'suite' ? '400px' : '0',
-                                    textAlign: room.id === 'deluxe' ? 'right' : 'left'
-                                }}>
-                                    <h4 style={{
-                                        fontFamily: "'Playfair Display', serif", fontSize: '32px', fontWeight: '600',
-                                        color: colors.text, marginBottom: '30px'
-                                    }}>{room.name}</h4>
-                                    <p style={{
-                                        fontFamily: "'Inter', sans-serif", fontSize: '15px', color: colors.textMuted,
-                                        lineHeight: 1.8, marginBottom: '32px'
-                                    }}>{room.desc}</p>
-                                    <div
-                                        onClick={() => handleBookRoom(room.id)}
-                                        style={{
-                                            fontFamily: "'Inter', sans-serif", fontSize: '14px', fontWeight: '600',
-                                            color: colors.accent, display: 'inline-flex', alignItems: 'center', gap: '8px',
-                                            textTransform: 'uppercase', letterSpacing: '1px',
-                                            cursor: 'pointer',
-                                            alignSelf: room.id === 'deluxe' ? 'flex-end' : 'flex-start'
-                                        }}>
-                                        Book Room <ChevronRight size={16} />
-                                    </div>
-                                </div>
-                                <div
-                                    className="room-image-section"
-                                    onClick={() => handleBookRoom(room.id)}
-                                >
-                                    <img
-                                        src={room.img}
-                                        alt={room.name}
-                                        style={{
-                                            width: '100%', height: '100%', objectFit: 'cover',
-                                            transition: 'transform 0.6s ease',
-                                        }}
-                                        onMouseEnter={e => e.target.style.transform = 'scale(1.05)'}
-                                        onMouseLeave={e => e.target.style.transform = 'scale(1)'}
-                                    />
-                                    <div style={{
-                                        position: 'absolute', bottom: '20px', right: '20px',
-                                        background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(8px)',
-                                        color: colors.text, padding: '8px 16px', borderRadius: '12px',
-                                        fontSize: '13px', fontWeight: '600', fontFamily: "'Inter', sans-serif",
-                                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-                                    }}>
-                                        {room.size}
-                                    </div>
-                                </div>
-                            </div>
-                        </FadeInSection>
-                    ))}
-                </div>
             </section>
+
+
 
             {/* ====== PACKAGES SECTION ====== */}
             <FadeInSection>
                 <section id="packages" style={{
                     maxWidth: '1100px', margin: '0 auto',
-                    padding: '0px 24px 24px',
+                    padding: '96px 24px 64px',
                 }}>
                     {/* Header */}
                     <div style={{ textAlign: 'center', marginBottom: '56px' }}>
@@ -1345,7 +1056,7 @@ export default function HomePage() {
                             </div>
 
                             <button
-                                onClick={() => router.push('/booking-page/custom?reset=true')}
+                                onClick={() => document.getElementById('packages')?.scrollIntoView({ behavior: 'smooth' })}
                                 style={{
                                     background: 'transparent', color: '#fff',
                                     border: '1.5px solid rgba(255,255,255,0.3)',
@@ -1510,9 +1221,10 @@ export default function HomePage() {
                         }}>Quick Links</h4>
                         <ul style={{ listStyle: 'none', padding: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
                             <li><a href="#home" className="footer-link">Home</a></li>
-                            <li><a href="#packages" className="footer-link">Packages</a></li>
-                            <li><a href="#about" className="footer-link">About</a></li>
-                            <li><a href="#contact" className="footer-link">Contact</a></li>
+                            <li><a href="/home#packages" className="footer-link">Packages</a></li>
+                            <li><a href="/my-schedule" className="footer-link">My Schedule</a></li>
+                            <li><a href="/home#about" className="footer-link">About</a></li>
+                            <li><a href="/home#contact" className="footer-link">Contact</a></li>
                         </ul>
                     </div>
                     <div>
