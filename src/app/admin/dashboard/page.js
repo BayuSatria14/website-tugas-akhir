@@ -52,20 +52,13 @@ export default function DashboardPage() {
                 const d = new Date();
                 const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-                // 1. Ambil Reservasi Terbaru (Limit 5 untuk tabel bawah) yang belum lewat tanggal checkout dan status CONFIRMED/PAID
-                const { data: bookings, error: bookingError } = await supabase
-                    .from('reservations')
-                    .select(`
-                        id, external_id, created_at, check_in, check_out, payment_status, room_name, package_name, total_amount,
-                        guests (first_name, last_name)
-                    `)
-                    .gte('check_out', today)
-                    .or('payment_status.eq.CONFIRMED,payment_status.eq.PAID')
-                    .order('created_at', { ascending: false })
-                    .limit(5);
+                // 1. Ambil Semua Data Aktif dari API (bypassing RLS)
+                const res = await fetch('/api/admin/reservations?filter=active');
+                const result = await res.json();
+                const allActiveBookings = result.success ? result.data : [];
 
-                if (bookingError) throw bookingError;
-                setRecentBookings(bookings || []);
+                // Ambil 5 teratas untuk Recent Bookings
+                setRecentBookings(allActiveBookings.slice(0, 5));
 
                 // 2. Hitung Paket Aktif (Terintegrasi dengan tabel packages status 'Active')
                 const { count: activePackagesCount, error: pkgError } = await supabase
@@ -75,28 +68,17 @@ export default function DashboardPage() {
 
                 if (pkgError) throw pkgError;
 
-                // 3. Ambil data untuk Statistik Reservasi Aktif (Total Booking & Total Tamu, Hanya CONFIRMED atau PAID)
-                const { data: activeReservations, error: activeResError } = await supabase
-                    .from('reservations')
-                    .select('adults, children')
-                    .gte('check_out', today)
-                    .or('payment_status.eq.CONFIRMED,payment_status.eq.PAID');
-
-                if (activeResError) throw activeResError;
-
-                const totalActiveBookings = activeReservations?.length || 0;
-                const totalActiveGuests = activeReservations?.reduce((sum, item) =>
-                    sum + (Number(item.adults) || 0) + (Number(item.children) || 0), 0) || 0;
+                // 3. Ambil data untuk Statistik Reservasi Aktif
+                const totalActiveBookings = allActiveBookings.length;
+                const totalActiveGuests = allActiveBookings.reduce((sum, item) =>
+                    sum + (Number(item.adults) || 0) + (Number(item.children) || 0), 0);
 
                 // 4. Ambil data Pendapatan (Hanya CONFIRMED atau PAID, all-time)
-                const { data: confirmedData, error: statsError } = await supabase
-                    .from('reservations')
-                    .select('total_amount')
-                    .or('payment_status.eq.CONFIRMED,payment_status.eq.PAID');
+                const resRevenue = await fetch('/api/admin/reservations?filter=confirmed');
+                const resultRevenue = await resRevenue.json();
+                const confirmedData = resultRevenue.success ? resultRevenue.data : [];
 
-                if (statsError) throw statsError;
-
-                const totalRevenue = confirmedData?.reduce((sum, item) => sum + (item.total_amount || 0), 0) || 0;
+                const totalRevenue = confirmedData.reduce((sum, item) => sum + (item.total_amount || 0), 0);
 
                 // Fungsi format Rupiah yang rapi
                 const formatCurrency = (val) => {

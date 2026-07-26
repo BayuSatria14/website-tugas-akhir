@@ -22,22 +22,10 @@ export default function GuestManagementPage() {
     const fetchPackageGuests = async () => {
         setIsLoading(true);
         try {
-            // Format hari ini untuk perbandingan filter otomatis
-            const d = new Date();
-            const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-
-            // Ambil hanya yang booking paket (package_name not null), status CONFIRMED/PAID
-            // dan check_out >= hari ini (otomatis menghapus/menyembunyikan data masa lalu)
-            const { data, error } = await supabase
-                .from('reservations')
-                .select('*, guests(*)')
-                .not('package_name', 'is', null)
-                .gte('check_out', today)
-                .or('payment_status.eq.CONFIRMED,payment_status.eq.PAID')
-                .order('check_in', { ascending: true });
-
-            if (error) throw error;
-            setPackageGuests(data || []);
+            const res = await fetch('/api/admin/reservations?filter=package_confirmed');
+            const result = await res.json();
+            if (!result.success) throw new Error(result.error);
+            setPackageGuests(result.data || []);
         } catch (err) {
             console.error("Error:", err.message);
         } finally {
