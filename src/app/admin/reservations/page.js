@@ -21,20 +21,11 @@ export default function ReservationsPage() {
     const fetchReservations = async () => {
         try {
             setIsLoading(true);
-            const d = new Date();
-            const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-
-            const { data, error } = await supabase
-                .from('reservations')
-                .select(`
-                        *,
-                        guests (first_name, last_name, email, phone)
-                    `)
-                .gte('check_out', today)
-                .order('created_at', { ascending: false });
-
-            if (error) throw error;
-            setReservations(data || []);
+            const res = await fetch('/api/admin/reservations?filter=recent_all');
+            const result = await res.json();
+            
+            if (!result.success) throw new Error(result.error);
+            setReservations(result.data || []);
         } catch (err) {
             console.error("Error fetching data:", err.message);
         } finally {

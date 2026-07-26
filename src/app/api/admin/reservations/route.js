@@ -20,6 +20,12 @@ export async function GET(request) {
                 .gte('check_out', today)
                 .or('payment_status.eq.CONFIRMED,payment_status.eq.PAID')
                 .order('check_in', { ascending: true });
+        } else if (filter === 'recent_all') {
+            const d = new Date();
+            const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            query = query
+                .gte('check_out', today)
+                .order('created_at', { ascending: false });
         } else if (filter === 'active') {
             const d = new Date();
             const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
