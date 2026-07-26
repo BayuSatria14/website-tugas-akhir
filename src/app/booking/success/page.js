@@ -14,7 +14,7 @@ function SuccessContent() {
 
         // Pemicu webhook simulasi lokal jika dalam development/localhost
         const triggerLocalWebhook = async () => {
-            if (bookingId && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+            if (bookingId) {
                 try {
                     await fetch('/api/xendit-webhook', {
                         method: 'POST',
@@ -24,9 +24,9 @@ function SuccessContent() {
                             status: 'PAID'
                         })
                     });
-                    console.log("Local webhook simulation triggered successfully.");
+                    console.log("Webhook simulation triggered successfully.");
                 } catch (err) {
-                    console.error("Failed to trigger local webhook simulation:", err);
+                    console.error("Failed to trigger webhook simulation:", err);
                 }
             }
         };
